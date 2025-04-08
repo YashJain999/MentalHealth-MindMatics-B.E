@@ -3,7 +3,7 @@ from django.utils.timezone import now
 from userauth.models import User
 
 class DiaryFolder(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # 🔹 User is now optional
+    user = models.ForeignKey(User, on_delete=models.CASCADE) 
     name = models.CharField(max_length=100, unique=True)  # Folder name (e.g., "Feb 1 - Feb 5")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -17,7 +17,7 @@ class DiaryFolder(models.Model):
 
 class DiaryEntry(models.Model):
     folder = models.ForeignKey(DiaryFolder, on_delete=models.CASCADE, related_name="entries")
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # Link to user
+    user = models.ForeignKey(User, on_delete=models.CASCADE)  # Link to user
     title = models.CharField(max_length=255)
     content = models.TextField(null=True, blank=True)
     date = models.DateField(default=now)  # 🔹 Removed `unique=True` 

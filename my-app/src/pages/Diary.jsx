@@ -78,7 +78,7 @@ const Diary = () => {
 
     useEffect(() => {
         // Fetch diary name when component loads
-        fetch(`http://localhost:8000/diary/folders/${folderId}/`)
+        fetch(`http://localhost:8000/api/diary/folders/${folderId}/`)
             .then(response => response.json())
             .then(data => {
                 setDiaryName(data.name);
@@ -95,7 +95,7 @@ const Diary = () => {
 
         const fetchEntries = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/diary/folders/${folderId}/entries/`);
+                const response = await fetch(`http://localhost:8000/api/diary/folders/${folderId}/entries/`);
                 const data = await response.json();
 
                 if (Array.isArray(data) && data.length > 0) {
@@ -135,7 +135,7 @@ const Diary = () => {
 
     const fetchDASScores = async (entryId) => {
         try {
-            const response = await fetch(`http://localhost:8000/diary/entries/${entryId}/fetch-das/`, {
+            const response = await fetch(`http://localhost:8000/api/diary/entries/${entryId}/fetch-das/`, {
                 method: "GET",
             });
 
@@ -167,7 +167,7 @@ const Diary = () => {
 
             if (!selectedEntry.id || selectedEntry.id === 0) {
                 // New entry → Use POST
-                response = await fetch("http://localhost:8000/diary/entries/", {
+                response = await fetch("http://localhost:8000/api/diary/entries/", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),
@@ -183,7 +183,7 @@ const Diary = () => {
                 }
             } else {
                 // Existing entry → Use PUT
-                response = await fetch(`http://localhost:8000/diary/entries/${selectedEntry.id}/`, {
+                response = await fetch(`http://localhost:8000/api/diary/entries/${selectedEntry.id}/`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload),
@@ -220,7 +220,7 @@ const Diary = () => {
     // Function to trigger cumulative DAS calculation
     const calculateCumulativeDAS = async (folderId) => {
         try {
-            const response = await fetch(`http://localhost:8000/diary/folders/${folderId}/calculate-cumulative/`, {
+            const response = await fetch(`http://localhost:8000/api/diary/folders/${folderId}/calculate-cumulative/`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
             });

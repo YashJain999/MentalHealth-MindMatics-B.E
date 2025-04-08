@@ -15,6 +15,7 @@ def report_generate(request):
     try:
         # Retrieve the email from the request data
         email = request.data.get('email')
+        
         print(email)
         if not email:
             return JsonResponse({"message": "Email is required."}, status=400)

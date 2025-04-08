@@ -1,5 +1,159 @@
+// import { useState, useEffect } from "react";
+// import { Link as RouterLink ,useNavigate } from "react-router-dom";
+// import { motion, AnimatePresence } from "framer-motion";
+// import { FaChevronDown, FaChevronUp, FaPlus, FaBook, FaLeaf, FaFeather } from "react-icons/fa";
+// import { HiSparkles } from "react-icons/hi";
+// import { BsJournalBookmark } from "react-icons/bs";
+// import { RiMentalHealthLine } from "react-icons/ri";
+// import Lottie from "react-lottie";
+// import confetti from "canvas-confetti";
+// import { useSearchParams } from 'react-router-dom';
+
+
+// const FoldersPage = () => {
+//     const [folderId, setFolderId] = useState(null);
+//     const [folders, setFolders] = useState([]);
+//     const [openFolder, setOpenFolder] = useState(null);
+//     const [isLoading, setIsLoading] = useState(true);
+//     const [showConfetti, setShowConfetti] = useState(false);
+//     const navigate = useNavigate();
+//     const [searchParams] = useSearchParams();
+//     const email = searchParams.get('email');
+
+
+
+//     // Animation variants
+//     const containerVariants = {
+//         hidden: { opacity: 0 },
+//         visible: {
+//             opacity: 1,
+//             transition: {
+//                 when: "beforeChildren",
+//                 staggerChildren: 0.2,
+//                 duration: 0.6
+//             }
+//         }
+//     };
+
+//     const folderVariants = {
+//         hidden: { opacity: 0, y: 20 },
+//         visible: {
+//             opacity: 1,
+//             y: 0,
+//             transition: { duration: 0.5, ease: "easeOut" }
+//         },
+//         hover: {
+//             scale: 1.02,
+//             boxShadow: "0 10px 25px rgba(0, 128, 128, 0.1)",
+//             transition: { duration: 0.2 }
+//         }
+//     };
+
+//     const headerVariants = {
+//         hidden: { opacity: 0, y: -50 },
+//         visible: {
+//             opacity: 1,
+//             y: 0,
+//             transition: { duration: 0.8, ease: "easeOut" }
+//         }
+//     };
+
+//     const buttonVariants = {
+//         hover: {
+//             scale: 1.05,
+//             boxShadow: "0 5px 15px rgba(0, 128, 128, 0.3)",
+//             transition: { duration: 0.3 }
+//         },
+//         tap: { scale: 0.95 }
+//     };
+
+//     useEffect(() => {
+//         const fetchFolders = async () => {
+//             setIsLoading(true);
+//             try {
+//                 const response = await fetch("http://localhost:8000/api/diary/folders/");
+//                 const data = await response.json();
+//                 setFolders(data);
+//             } catch (error) {
+//                 console.error("Error fetching folders:", error);
+//             } finally {
+//                 setIsLoading(false);
+//             }
+//         };
+
+//         fetchFolders();
+//     }, []);
+
+//     // Toggle folder dropdown
+//     const toggleFolder = (folderId) => {
+//         setOpenFolder(openFolder === folderId ? null : folderId);
+//     };
+
+//     // Open diary for a selected folder
+//     const openDiary = (folderId) => {
+//         navigate(`/diary/folders/diaryentries/${folderId}`);
+//     };
+
+//     // Create a new folder with confetti animation
+//     const createNewFolder = async () => {
+//         const folderName = prompt("Enter a name for your new folder:");
+//         if (!folderName) return; // Stop if user cancels
+
+//         try {
+//             const response = await fetch("http://localhost:8000/api/diary/folders/", {
+//                 method: "POST",
+//                 headers: {
+//                     "Content-Type": "application/json",
+//                 },
+//                 body: JSON.stringify({ name: folderName ,email: email }),
+//             });
+
+//             if (response.ok) {
+//                 const newFolder = await response.json();
+
+//                 // Show confetti animation
+//                 triggerConfetti();
+
+//                 // Add new folder with animation
+//                 setFolders(prev => [...prev, newFolder]);
+
+//                 setTimeout(() => {
+//                     navigate(`/diary/folders/diaryentries/${newFolder.id}`);
+//                 }, 1500);
+//             } else {
+//                 console.error("Failed to create folder.");
+//             }
+//         } catch (error) {
+//             console.error("Error creating folder:", error);
+//         }
+//     };
+
+//     // Trigger confetti animation
+//     const triggerConfetti = () => {
+//         setShowConfetti(true);
+//         confetti({
+//             particleCount: 100,
+//             spread: 70,
+//             origin: { y: 0.6 },
+//             colors: ['#4ade80', '#22d3ee', '#60a5fa'],
+//         });
+//         setTimeout(() => setShowConfetti(false), 2000);
+//     };
+
+//     // Set folder ID when selecting a folder
+//     const handleFolderSelect = (id) => {
+//         setFolderId(id);
+//     };
+
+//     // Calculate mood score color
+//     const getMoodColor = (score) => {
+//         if (score < 5) return "text-green-500";
+//         if (score < 10) return "text-yellow-500";
+//         return "text-red-500";
+//     };
+
 import { useState, useEffect } from "react";
-import { Link as RouterLink ,useNavigate } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaChevronDown, FaChevronUp, FaPlus, FaBook, FaLeaf, FaFeather } from "react-icons/fa";
 import { HiSparkles } from "react-icons/hi";
@@ -8,7 +162,7 @@ import { RiMentalHealthLine } from "react-icons/ri";
 import Lottie from "react-lottie";
 import confetti from "canvas-confetti";
 import { useSearchParams } from 'react-router-dom';
-
+import api, { fetchUserDetails } from "../api"; // Adjust path as needed
 
 const FoldersPage = () => {
     const [folderId, setFolderId] = useState(null);
@@ -16,11 +170,8 @@ const FoldersPage = () => {
     const [openFolder, setOpenFolder] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showConfetti, setShowConfetti] = useState(false);
+    const [email, setEmail] = useState("");
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
-    const email = searchParams.get('email');
-
-
 
     // Animation variants
     const containerVariants = {
@@ -68,20 +219,21 @@ const FoldersPage = () => {
     };
 
     useEffect(() => {
-        const fetchFolders = async () => {
-            setIsLoading(true);
+        const fetchData = async () => {
             try {
-                const response = await fetch("http://localhost:8000/diary/folders/");
-                const data = await response.json();
-                setFolders(data);
+                const userData = await fetchUserDetails();
+                setEmail(userData.email);
+
+                const response = await api.get("/api/diary/folders/");
+                setFolders(response.data);
             } catch (error) {
-                console.error("Error fetching folders:", error);
+                console.error("Error fetching folders or user:", error);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchFolders();
+        fetchData();
     }, []);
 
     // Toggle folder dropdown
@@ -97,38 +249,26 @@ const FoldersPage = () => {
     // Create a new folder with confetti animation
     const createNewFolder = async () => {
         const folderName = prompt("Enter a name for your new folder:");
-        if (!folderName) return; // Stop if user cancels
+        if (!folderName) return;
 
         try {
-            const response = await fetch("http://localhost:8000/diary/folders/", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ name: folderName ,email: email }),
+            const response = await api.post("/api/diary/folders/create/", {
+                name: folderName,
+                email: email
             });
 
-            if (response.ok) {
-                const newFolder = await response.json();
+            const newFolder = response.data;
+            triggerConfetti();
+            setFolders(prev => [...prev, newFolder]);
 
-                // Show confetti animation
-                triggerConfetti();
-
-                // Add new folder with animation
-                setFolders(prev => [...prev, newFolder]);
-
-                setTimeout(() => {
-                    navigate(`/diary/folders/diaryentries/${newFolder.id}`);
-                }, 1500);
-            } else {
-                console.error("Failed to create folder.");
-            }
+            setTimeout(() => {
+                navigate(`/diary/folders/diaryentries/${newFolder.id}`);
+            }, 1500);
         } catch (error) {
             console.error("Error creating folder:", error);
         }
     };
 
-    // Trigger confetti animation
     const triggerConfetti = () => {
         setShowConfetti(true);
         confetti({
@@ -140,12 +280,10 @@ const FoldersPage = () => {
         setTimeout(() => setShowConfetti(false), 2000);
     };
 
-    // Set folder ID when selecting a folder
     const handleFolderSelect = (id) => {
         setFolderId(id);
     };
 
-    // Calculate mood score color
     const getMoodColor = (score) => {
         if (score < 5) return "text-green-500";
         if (score < 10) return "text-yellow-500";
@@ -154,6 +292,15 @@ const FoldersPage = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-teal-50 via-blue-50 to-purple-50 flex flex-col items-center py-10 px-5 relative overflow-hidden">
+            <div className="absolute top-4 right-6 flex items-center space-x-2 bg-black/30 px-4 py-2 rounded-full shadow-lg text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 12H8m0 0l4-4m0 4l4 4" />
+                </svg>
+                <span className="text-sm">
+                    Logged in as: <span className="text-indigo-300 font-semibold">{email}</span>
+                </span>
+            </div>
+
             {/* Decorative background elements */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
                 <motion.div
@@ -228,14 +375,14 @@ const FoldersPage = () => {
                         </h1>
                     </div>
                     <RouterLink to={`/home`} className="absolute up-0 left-8">
-                            <motion.button
-                                whileHover={{ scale: 1.05, boxShadow: "0 4px 12px rgba(37, 99, 235, 0.3)" }}
-                                whileTap={{ scale: 0.95 }}
-                                className="w-full mb-8 flex items-center justify-center gap-3 py-3 px-6 text-white bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 rounded-xl shadow-md transition-all duration-300"
-                            >
-                                Home
-                            </motion.button>
-                        </RouterLink>
+                        <motion.button
+                            whileHover={{ scale: 1.05, boxShadow: "0 4px 12px rgba(37, 99, 235, 0.3)" }}
+                            whileTap={{ scale: 0.95 }}
+                            className="w-full mb-8 flex items-center justify-center gap-3 py-3 px-6 text-white bg-gradient-to-r from-teal-500 via-blue-500 to-purple-500 rounded-xl shadow-md transition-all duration-300"
+                        >
+                            Home
+                        </motion.button>
+                    </RouterLink>
                     <motion.p
                         className="text-gray-600 italic"
                         initial={{ opacity: 0 }}
@@ -298,8 +445,8 @@ const FoldersPage = () => {
                                     {/* Folder Header */}
                                     <div
                                         className={`flex justify-between items-center cursor-pointer p-5 ${openFolder === folder.id
-                                                ? "bg-gradient-to-r from-teal-50 via-blue-50 to-teal-100"
-                                                : "bg-gradient-to-r from-blue-50 to-teal-50 hover:from-blue-100 hover:to-teal-100"
+                                            ? "bg-gradient-to-r from-teal-50 via-blue-50 to-teal-100"
+                                            : "bg-gradient-to-r from-blue-50 to-teal-50 hover:from-blue-100 hover:to-teal-100"
                                             } transition-colors duration-500`}
                                         onClick={() => toggleFolder(folder.id)}
                                     >

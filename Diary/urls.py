@@ -1,18 +1,22 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import DiaryEntryViewSet, DiaryFolderViewSet, FolderEntriesView, FetchDASView, CalculateCumulativeDASView
-
-# Create the API router
-router = DefaultRouter()
-router.register(r'entries', DiaryEntryViewSet, basename='diaryentry')
-router.register(r'folders', DiaryFolderViewSet, basename='diaryfolder')
-
+from django.urls import path
+from .views import (
+    create_folder_and_entries,
+    folder_entries,
+    fetch_das_scores,
+    calculate_cumulative_das,
+    update_diary_entry,
+    list_folders,
+)
 
 urlpatterns = [
-    path('', include(router.urls)),  # This registers API routes correctly
-    path('folders/<int:folder_id>/entries/', FolderEntriesView.as_view(), name='folder-entries'),
-    path('entries/<int:entry_id>/fetch-das/', FetchDASView.as_view(), name='fetch_das_scores'),
-    path("folders/<int:folder_id>/calculate-cumulative/", CalculateCumulativeDASView.as_view(), name="calculate_cumulative_das"),
+    # Folder APIs
+    path("api/diary/folders/create/", create_folder_and_entries, name="create_folder"),
+    path("api/diary/folders/<int:folder_id>/entries/", folder_entries, name="folder_entries"),
+    path("api/diary/folders/<int:folder_id>/calculate-cumulative/", calculate_cumulative_das, name="calculate_cumulative_das"),
+    path("api/diary/folders/", list_folders, name="list_folders"),
 
-
+    # Entry APIs
+    path("api/diary/entries/<int:entry_id>/update/", update_diary_entry, name="update_entry"),
+    path("api/diary/entries/<int:entry_id>/fetch-das/", fetch_das_scores
+    , name="fetch_das_scores"),
 ]

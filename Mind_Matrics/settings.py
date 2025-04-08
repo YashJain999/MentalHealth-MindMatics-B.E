@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_extensions',
     'userauth.apps.UserauthConfig',
     'Video.apps.VideoConfig',
     'rest_framework',
@@ -132,9 +133,9 @@ WSGI_APPLICATION = 'Mind_Matrics.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'MentalHealth',
+        'NAME': 'mind_matrics_db',
         'USER': 'postgres',
-        'PASSWORD': 'Puraj01!',
+        'PASSWORD': 'Postg@121',
         'HOST': 'localhost',  # Set to 'localhost' or your database host
         'PORT': '5432',
         }

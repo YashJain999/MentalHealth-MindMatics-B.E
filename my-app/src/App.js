@@ -17,7 +17,6 @@ import PersonalizedRecommendation from "./pages/PersonalizedRecommendation";
 import StressReliefRecommendations from "./components/StressReliefRecommendations";
 import DiaryReport from "./components/DiaryReport";
 
-
 function Logout(){
   localStorage.clear()
   return <Navigate to="/login" />
