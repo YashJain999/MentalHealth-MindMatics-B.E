@@ -1,10 +1,322 @@
+// import { useState, useEffect, useRef } from "react";
+// import { useParams, useNavigate } from "react-router-dom";
+// import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+// import { faArrowLeft, faChevronLeft, faChevronRight, faSave, faBook, faPenFancy } from "@fortawesome/free-solid-svg-icons";
+// import { motion, AnimatePresence, MotionConfig } from "framer-motion";
+// import { Link as RouterLink } from 'react-router-dom';
+
+
+// const Diary = () => {
+//     const { folderId } = useParams();
+//     const navigate = useNavigate();
+//     const [entries, setEntries] = useState([]);
+//     const [selectedEntry, setSelectedEntry] = useState(null);
+//     const [entryContent, setEntryContent] = useState("");
+//     const [diaryName, setDiaryName] = useState("");
+//     const [currentDateTime, setCurrentDateTime] = useState(new Date().toLocaleString());
+//     const [currentPage, setCurrentPage] = useState(0);
+//     const [isSaving, setIsSaving] = useState(false);
+//     const [showSavedNotification, setShowSavedNotification] = useState(false);
+//     const textareaRef = useRef(null);
+
+//     // Split text into pages (each page has 10 lines)
+//     const linesPerPage = 10;
+//     const charactersPerLine = 60;
+
+//     const getPages = (text) => {
+//         if (!text) return [""];
+
+//         // Split by paragraphs (double newlines)
+//         const paragraphs = text.split(/\n\n+/);
+//         const pages = [];
+//         let currentPageContent = [];
+//         let currentLineCount = 0;
+
+//         paragraphs.forEach(paragraph => {
+//             // Estimate line count for paragraph
+//             const estimatedLines = Math.ceil(paragraph.length / 80) + 1;
+
+//             if (currentLineCount + estimatedLines > linesPerPage) {
+//                 // Start new page if this paragraph would overflow
+//                 if (currentPageContent.length > 0) {
+//                     pages.push(currentPageContent.join('\n\n'));
+//                     currentPageContent = [];
+//                     currentLineCount = 0;
+//                 }
+//             }
+
+//             currentPageContent.push(paragraph);
+//             currentLineCount += estimatedLines;
+
+//             // If exactly at page limit, start new page
+//             if (currentLineCount >= linesPerPage) {
+//                 pages.push(currentPageContent.join('\n\n'));
+//                 currentPageContent = [];
+//                 currentLineCount = 0;
+//             }
+//         });
+
+//         // Add final page if there's content left
+//         if (currentPageContent.length > 0) {
+//             pages.push(currentPageContent.join('\n\n'));
+//         }
+
+//         return pages.length > 0 ? pages : [""];
+//     };
+
+//     const pages = getPages(entryContent);
+//     const totalPages = pages.length;
+
+//     // Update current time
+//     useEffect(() => {
+//         setCurrentDateTime(new Date().toLocaleString());
+//         const timer = setInterval(() => {
+//             setCurrentDateTime(new Date().toLocaleString());
+//         }, 60000);
+//         return () => clearInterval(timer);
+//     }, []);
+
+//     useEffect(() => {
+//         // Fetch diary name when component loads
+//         fetch(`http://localhost:8000/api/diary/folders/${folderId}/`)
+//             .then(response => response.json())
+//             .then(data => {
+//                 setDiaryName(data.name);
+//             })
+//             .catch(error => console.error("Error fetching diary name:", error));
+//     }, [folderId]);
+
+//     useEffect(() => {
+//         if (!folderId) {
+//             console.error("Invalid folder ID, redirecting...");
+//             navigate("/diary/folders");
+//             return;
+//         }
+
+//         const fetchEntries = async () => {
+//             try {
+//                 const response = await fetch(`http://localhost:8000/api/diary/folders/${folderId}/entries/`);
+//                 const data = await response.json();
+
+//                 if (Array.isArray(data) && data.length > 0) {
+//                     const formattedEntries = data.map(entry => ({
+//                         ...entry,
+//                         formattedDateTime: new Date(entry.created_at).toLocaleString(),
+//                     }));
+
+//                     setEntries(formattedEntries);
+//                     setSelectedEntry(formattedEntries[0]);
+//                     setEntryContent(formattedEntries[0].content || "");
+//                 } else {
+//                     const newEntries = Array.from({ length: 5 }, (_, index) => ({
+//                         title: `Entry ${index + 1}`,
+//                         folder: folderId,
+//                         id: index,
+//                         content: "",
+//                         date: new Date().toISOString().split("T")[0],
+//                         formattedDateTime: new Date().toLocaleString(),
+//                     }));
+
+//                     setEntries(newEntries);
+//                     setSelectedEntry(newEntries[0]);
+//                 }
+//             } catch (error) {
+//                 console.error("Error fetching diary entries:", error);
+//             }
+//         };
+
+//         fetchEntries();
+//     }, [folderId, navigate]);
+
+//     // Reset to first page when changing entries
+//     useEffect(() => {
+//         setCurrentPage(0);
+//     }, [selectedEntry]);
+
+//     const fetchDASScores = async (entryId) => {
+//         try {
+//             const response = await fetch(`http://localhost:8000/api/diary/entries/${entryId}/fetch-das/`, {
+//                 method: "GET",
+//             });
+
+//             if (response.ok) {
+//                 const result = await response.json();
+//                 console.log("DAS Scores:", result);
+//             } else {
+//                 console.error("Failed to fetch DAS scores");
+//             }
+//         } catch (error) {
+//             console.error("Error fetching DAS scores:", error);
+//         }
+//     };
+
+//     const handleSave = async () => {
+//         if (!selectedEntry) return;
+
+//         try {
+//             setIsSaving(true);
+//             let response;
+//             const payload = {
+//                 content: entryContent,
+//                 title: selectedEntry.title || `Entry ${selectedEntry.id}`,
+//                 folder: selectedEntry.folder || folderId,
+//             };
+
+//             let newEntry = selectedEntry;
+//             console.log("Saving diary entry:", payload);
+
+//             if (!selectedEntry.id || selectedEntry.id === 0) {
+//                 // New entry → Use POST
+//                 response = await fetch("http://localhost:8000/api/diary/entries/", {
+//                     method: "POST",
+//                     headers: { "Content-Type": "application/json" },
+//                     body: JSON.stringify(payload),
+//                 });
+
+//                 if (response.ok) {
+//                     newEntry = await response.json();
+//                     setEntries([...entries, newEntry]);
+//                     setSelectedEntry(newEntry);
+
+//                     // Call DAS Scores API after saving
+//                     fetchDASScores(newEntry.id);
+//                 }
+//             } else {
+//                 // Existing entry → Use PUT
+//                 response = await fetch(`http://localhost:8000/api/diary/entries/${selectedEntry.id}/`, {
+//                     method: "PUT",
+//                     headers: { "Content-Type": "application/json" },
+//                     body: JSON.stringify(payload),
+//                 });
+
+//                 if (response.ok) {
+//                     const updatedEntries = entries.map(entry =>
+//                         entry.id === selectedEntry.id ? { ...entry, content: entryContent } : entry
+//                     );
+//                     setEntries(updatedEntries);
+//                     // Call DAS Scores API after updating
+//                     fetchDASScores(selectedEntry.id);
+//                 }
+//             }
+
+//             // Check if all entries in the folder have content
+//             const allEntriesFilled = entries.every((entry) => entry.content && entry.content.trim() !== "");
+//             if (allEntriesFilled) {
+//                 console.log("All diary entries have content. Calculating cumulative score...");
+//                 calculateCumulativeDAS(folderId);
+//             } else {
+//                 console.log("Not all diary entries are filled. Cumulative score calculation skipped.");
+//             }
+
+//             setIsSaving(false);
+//             setShowSavedNotification(true);
+//             setTimeout(() => setShowSavedNotification(false), 2000);
+//         } catch (error) {
+//             console.error("Error saving entry:", error);
+//             setIsSaving(false);
+//         }
+//     };
+
+//     // Function to trigger cumulative DAS calculation
+//     const calculateCumulativeDAS = async (folderId) => {
+//         try {
+//             const response = await fetch(`http://localhost:8000/api/diary/folders/${folderId}/calculate-cumulative/`, {
+//                 method: "POST",
+//                 headers: { "Content-Type": "application/json" },
+//             });
+
+//             if (response.ok) {
+//                 const result = await response.json();
+//                 console.log("Cumulative DAS Scores:", result);
+//             } else {
+//                 console.error("Failed to calculate cumulative DAS scores");
+//             }
+//         } catch (error) {
+//             console.error("Error calculating cumulative DAS scores:", error);
+//         }
+//     };
+
+//     const handleContentChange = (e) => {
+//         setEntryContent(e.target.value);
+//     };
+
+//     const nextPage = () => {
+//         if (currentPage < totalPages - 1) {
+//             setCurrentPage(currentPage + 1);
+//         }
+//     };
+
+//     const prevPage = () => {
+//         if (currentPage > 0) {
+//             setCurrentPage(currentPage - 1);
+//         }
+//     };
+
+//     const updateCurrentPageContent = (e) => {
+//         const newPages = [...pages];
+//         newPages[currentPage] = e.target.value;
+//         setEntryContent(newPages.join('\n'));
+//     };
+
+//     // Animations variants
+//     const pageVariants = {
+//         initial: {
+//             opacity: 0,
+//             scale: 0.95,
+//         },
+//         in: {
+//             opacity: 1,
+//             scale: 1,
+//             transition: { duration: 0.3, ease: "easeOut" }
+//         },
+//         out: {
+//             opacity: 0,
+//             scale: 1.05,
+//             transition: { duration: 0.2, ease: "easeIn" }
+//         }
+//     };
+
+//     const buttonHoverVariants = {
+//         hover: {
+//             scale: 1.05,
+//             boxShadow: "0px 4px 8px rgba(0,0,0,0.1)",
+//             transition: { duration: 0.2 }
+//         },
+//         tap: {
+//             scale: 0.95,
+//             transition: { duration: 0.1 }
+//         }
+//     };
+
+//     const pageCountVariants = {
+//         animate: {
+//             opacity: [0, 1],
+//             y: [5, 0],
+//             transition: { duration: 0.3 }
+//         }
+//     };
+
+//     const tabVariants = {
+//         selected: {
+//             y: 4,
+//             backgroundColor: "rgba(254, 243, 199, 0.9)",
+//             boxShadow: "0px -2px 8px rgba(0,0,0,0.05)",
+//             transition: { duration: 0.3, ease: "easeOut" }
+//         },
+//         notSelected: {
+//             y: 0,
+//             backgroundColor: "rgba(255, 251, 235, 0.8)",
+//             transition: { duration: 0.3, ease: "easeOut" }
+//         }
+//     };
+
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faChevronLeft, faChevronRight, faSave, faBook, faPenFancy } from "@fortawesome/free-solid-svg-icons";
 import { motion, AnimatePresence, MotionConfig } from "framer-motion";
 import { Link as RouterLink } from 'react-router-dom';
-
+import api from "../api";
 
 const Diary = () => {
     const { folderId } = useParams();
@@ -19,36 +331,26 @@ const Diary = () => {
     const [showSavedNotification, setShowSavedNotification] = useState(false);
     const textareaRef = useRef(null);
 
-    // Split text into pages (each page has 10 lines)
     const linesPerPage = 10;
-    const charactersPerLine = 60;
 
     const getPages = (text) => {
         if (!text) return [""];
-
-        // Split by paragraphs (double newlines)
         const paragraphs = text.split(/\n\n+/);
         const pages = [];
         let currentPageContent = [];
         let currentLineCount = 0;
 
         paragraphs.forEach(paragraph => {
-            // Estimate line count for paragraph
             const estimatedLines = Math.ceil(paragraph.length / 80) + 1;
-
             if (currentLineCount + estimatedLines > linesPerPage) {
-                // Start new page if this paragraph would overflow
                 if (currentPageContent.length > 0) {
                     pages.push(currentPageContent.join('\n\n'));
                     currentPageContent = [];
                     currentLineCount = 0;
                 }
             }
-
             currentPageContent.push(paragraph);
             currentLineCount += estimatedLines;
-
-            // If exactly at page limit, start new page
             if (currentLineCount >= linesPerPage) {
                 pages.push(currentPageContent.join('\n\n'));
                 currentPageContent = [];
@@ -56,7 +358,6 @@ const Diary = () => {
             }
         });
 
-        // Add final page if there's content left
         if (currentPageContent.length > 0) {
             pages.push(currentPageContent.join('\n\n'));
         }
@@ -67,7 +368,6 @@ const Diary = () => {
     const pages = getPages(entryContent);
     const totalPages = pages.length;
 
-    // Update current time
     useEffect(() => {
         setCurrentDateTime(new Date().toLocaleString());
         const timer = setInterval(() => {
@@ -77,13 +377,15 @@ const Diary = () => {
     }, []);
 
     useEffect(() => {
-        // Fetch diary name when component loads
-        fetch(`http://localhost:8000/api/diary/folders/${folderId}/`)
-            .then(response => response.json())
-            .then(data => {
-                setDiaryName(data.name);
-            })
-            .catch(error => console.error("Error fetching diary name:", error));
+        const fetchDiaryName = async () => {
+            try {
+                const response = await api.get(`/api/diary/folders/${folderId}/`);
+                setDiaryName(response.data.name);
+            } catch (error) {
+                console.error("Error fetching diary name:", error);
+            }
+        };
+        fetchDiaryName();
     }, [folderId]);
 
     useEffect(() => {
@@ -95,30 +397,20 @@ const Diary = () => {
 
         const fetchEntries = async () => {
             try {
-                const response = await fetch(`http://localhost:8000/api/diary/folders/${folderId}/entries/`);
-                const data = await response.json();
-
+                const response = await api.get(`/api/diary/folders/${folderId}/entries/`);
+                const data = response.data;
                 if (Array.isArray(data) && data.length > 0) {
-                    const formattedEntries = data.map(entry => ({
+                    const sortedEntries = data.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+                    const formattedEntries = sortedEntries.map(entry => ({
                         ...entry,
                         formattedDateTime: new Date(entry.created_at).toLocaleString(),
                     }));
-
                     setEntries(formattedEntries);
-                    setSelectedEntry(formattedEntries[0]);
-                    setEntryContent(formattedEntries[0].content || "");
-                } else {
-                    const newEntries = Array.from({ length: 5 }, (_, index) => ({
-                        title: `Entry ${index + 1}`,
-                        folder: folderId,
-                        id: index,
-                        content: "",
-                        date: new Date().toISOString().split("T")[0],
-                        formattedDateTime: new Date().toLocaleString(),
-                    }));
-
-                    setEntries(newEntries);
-                    setSelectedEntry(newEntries[0]);
+                    const today = new Date().toISOString().split("T")[0];
+                    const todayEntry = formattedEntries.find(e => e.date === today);
+                    setSelectedEntry(todayEntry || formattedEntries[0]);
+                    setEntryContent((todayEntry || formattedEntries[0]).content || "");
                 }
             } catch (error) {
                 console.error("Error fetching diary entries:", error);
@@ -128,109 +420,92 @@ const Diary = () => {
         fetchEntries();
     }, [folderId, navigate]);
 
-    // Reset to first page when changing entries
     useEffect(() => {
         setCurrentPage(0);
     }, [selectedEntry]);
 
     const fetchDASScores = async (entryId) => {
         try {
-            const response = await fetch(`http://localhost:8000/api/diary/entries/${entryId}/fetch-das/`, {
-                method: "GET",
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                console.log("DAS Scores:", result);
-            } else {
-                console.error("Failed to fetch DAS scores");
-            }
+            await api.get(`/api/diary/entries/${entryId}/fetch-das/`);
         } catch (error) {
             console.error("Error fetching DAS scores:", error);
         }
     };
 
     const handleSave = async () => {
-        if (!selectedEntry) return;
+        if (!selectedEntry?.id) return;
+
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset to start of today
+
+        const entryDate = new Date(selectedEntry.date);
+        entryDate.setHours(0, 0, 0, 0); // Reset entry date too
+
+        console.log("Entry Date:", entryDate);
+        console.log("Today:", today);
+
+
+        if (entryDate > today) {
+            alert("You can't edit future diary entries.");
+            return;
+        }
 
         try {
             setIsSaving(true);
-            let response;
+
             const payload = {
                 content: entryContent,
                 title: selectedEntry.title || `Entry ${selectedEntry.id}`,
                 folder: selectedEntry.folder || folderId,
             };
 
-            let newEntry = selectedEntry;
-            console.log("Saving diary entry:", payload);
+            const response = await api.put(`/api/diary/entries/${selectedEntry.id}/update/`, payload);
 
-            if (!selectedEntry.id || selectedEntry.id === 0) {
-                // New entry → Use POST
-                response = await fetch("http://localhost:8000/api/diary/entries/", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
+            if (response.status === 200) {
+                const updatedEntries = entries.map(entry =>
+                    entry.id === selectedEntry.id ? { ...entry, content: entryContent } : entry
+                );
+                setEntries(updatedEntries);
+                fetchDASScores(selectedEntry.id);
 
-                if (response.ok) {
-                    newEntry = await response.json();
-                    setEntries([...entries, newEntry]);
-                    setSelectedEntry(newEntry);
+                const allFilled = updatedEntries.every(
+                    entry => entry.content && entry.content.trim() !== ""
+                );
 
-                    // Call DAS Scores API after saving
-                    fetchDASScores(newEntry.id);
+                if (allFilled) {
+                    await calculateCumulativeDAS(folderId);
                 }
-            } else {
-                // Existing entry → Use PUT
-                response = await fetch(`http://localhost:8000/api/diary/entries/${selectedEntry.id}/`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
-                });
 
-                if (response.ok) {
-                    const updatedEntries = entries.map(entry =>
-                        entry.id === selectedEntry.id ? { ...entry, content: entryContent } : entry
-                    );
-                    setEntries(updatedEntries);
-                    // Call DAS Scores API after updating
-                    fetchDASScores(selectedEntry.id);
-                }
+                setShowSavedNotification(true);
+                setTimeout(() => setShowSavedNotification(false), 2000);
             }
 
-            // Check if all entries in the folder have content
-            const allEntriesFilled = entries.every((entry) => entry.content && entry.content.trim() !== "");
-            if (allEntriesFilled) {
-                console.log("All diary entries have content. Calculating cumulative score...");
-                calculateCumulativeDAS(folderId);
-            } else {
-                console.log("Not all diary entries are filled. Cumulative score calculation skipped.");
-            }
-
-            setIsSaving(false);
-            setShowSavedNotification(true);
-            setTimeout(() => setShowSavedNotification(false), 2000);
         } catch (error) {
             console.error("Error saving entry:", error);
+        } finally {
             setIsSaving(false);
         }
     };
 
-    // Function to trigger cumulative DAS calculation
+    useEffect(() => {
+        const fetchFolderName = async () => {
+            try {
+                const response = await api.get(`/api/diary/folders/`);
+                const allFolders = response.data;
+                const folder = allFolders.find(f => f.id === parseInt(folderId));
+                if (folder) setDiaryName(folder.name);
+            } catch (error) {
+                console.error("Error fetching folder name:", error);
+            }
+        };
+
+        fetchFolderName();
+    }, [folderId]);
+
     const calculateCumulativeDAS = async (folderId) => {
         try {
-            const response = await fetch(`http://localhost:8000/api/diary/folders/${folderId}/calculate-cumulative/`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-            });
-
-            if (response.ok) {
-                const result = await response.json();
-                console.log("Cumulative DAS Scores:", result);
-            } else {
-                console.error("Failed to calculate cumulative DAS scores");
-            }
+            await api.post(`/api/diary/folders/${folderId}/calculate-cumulative/`);
         } catch (error) {
             console.error("Error calculating cumulative DAS scores:", error);
         }
@@ -258,42 +533,19 @@ const Diary = () => {
         setEntryContent(newPages.join('\n'));
     };
 
-    // Animations variants
     const pageVariants = {
-        initial: {
-            opacity: 0,
-            scale: 0.95,
-        },
-        in: {
-            opacity: 1,
-            scale: 1,
-            transition: { duration: 0.3, ease: "easeOut" }
-        },
-        out: {
-            opacity: 0,
-            scale: 1.05,
-            transition: { duration: 0.2, ease: "easeIn" }
-        }
+        initial: { opacity: 0, scale: 0.95 },
+        in: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: "easeOut" } },
+        out: { opacity: 0, scale: 1.05, transition: { duration: 0.2, ease: "easeIn" } }
     };
 
     const buttonHoverVariants = {
-        hover: {
-            scale: 1.05,
-            boxShadow: "0px 4px 8px rgba(0,0,0,0.1)",
-            transition: { duration: 0.2 }
-        },
-        tap: {
-            scale: 0.95,
-            transition: { duration: 0.1 }
-        }
+        hover: { scale: 1.05, boxShadow: "0px 4px 8px rgba(0,0,0,0.1)", transition: { duration: 0.2 } },
+        tap: { scale: 0.95, transition: { duration: 0.1 } }
     };
 
     const pageCountVariants = {
-        animate: {
-            opacity: [0, 1],
-            y: [5, 0],
-            transition: { duration: 0.3 }
-        }
+        animate: { opacity: [0, 1], y: [5, 0], transition: { duration: 0.3 } }
     };
 
     const tabVariants = {
@@ -309,7 +561,6 @@ const Diary = () => {
             transition: { duration: 0.3, ease: "easeOut" }
         }
     };
-
     return (
         <MotionConfig transition={{ duration: 0.4 }}>
             <div className="h-screen w-screen bg-cover bg-center relative overflow-hidden"
@@ -336,9 +587,9 @@ const Diary = () => {
 
                 {/* Title Display with animation */}
                 <motion.div
-                    className="absolute top-8 left-1/2 transform -translate-x-1/2 text-center"
+                    className="absolute top-8 left-1/2 text-center"
                     initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    animate={{ opacity: 1, y: 0, x: "-50%" }}
                     transition={{ delay: 0.3, duration: 0.6 }}
                 >
                     <h1 className="text-3xl font-bold text-amber-900 font-serif flex items-center justify-center">

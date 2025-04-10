@@ -262,8 +262,10 @@ const FoldersPage = () => {
             setFolders(prev => [...prev, newFolder]);
 
             setTimeout(() => {
+                alert(`🎉 Folder "${newFolder.name}" created successfully!`);
                 navigate(`/diary/folders/diaryentries/${newFolder.id}`);
-            }, 1500);
+            }, 1000); // adjusted for better UX
+
         } catch (error) {
             console.error("Error creating folder:", error);
         }
@@ -288,6 +290,20 @@ const FoldersPage = () => {
         if (score < 5) return "text-green-500";
         if (score < 10) return "text-yellow-500";
         return "text-red-500";
+    };
+
+    const deleteFolder = async (folderIdToDelete) => {
+        const confirmDelete = window.confirm("Are you sure you want to delete this folder?");
+        if (!confirmDelete) return;
+
+        try {
+            await api.delete(`/api/diary/folders/${folderIdToDelete}/`);
+            setFolders(prev => prev.filter(folder => folder.id !== folderIdToDelete));
+            alert("Folder deleted successfully.");
+        } catch (error) {
+            console.error("Error deleting folder:", error);
+            alert("Failed to delete folder.");
+        }
     };
 
     return (
@@ -484,6 +500,15 @@ const FoldersPage = () => {
                                                 )}
                                             </div>
                                         </div>
+                                        <motion.button
+                                            onClick={() => deleteFolder(folder.id)}
+                                            className="text-red-500 bg-white/70 p-2 rounded-full hover:bg-red-100 transition"
+                                            whileHover={{ scale: 1.1 }}
+                                            whileTap={{ scale: 0.9 }}
+                                            title="Delete Folder"
+                                        >
+                                            <span className="text-sm">🗑️</span>
+                                        </motion.button>
                                         <motion.span
                                             className="text-gray-500 text-xl bg-white/50 p-2 rounded-full"
                                             whileHover={{ rotate: openFolder === folder.id ? -180 : 180, scale: 1.1 }}
@@ -492,6 +517,7 @@ const FoldersPage = () => {
                                         >
                                             <FaChevronDown className={openFolder === folder.id ? "text-teal-600" : ""} />
                                         </motion.span>
+
                                     </div>
 
                                     {/* Show options when folder is open */}

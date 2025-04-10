@@ -10,6 +10,12 @@ from .utils import fetch_das_scores, calculate_cumulative_scores
 from django.db.models import Avg
 from django.http import JsonResponse
 import json
+from datetime import timedelta, date, datetime
+from django.utils import timezone
+from traceback import format_exc
+from django.utils.timezone import localdate
+
+
 
 client = Client("Karanjain09/Text_Analysis")
 
@@ -25,41 +31,59 @@ def list_folders(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_folder_and_entries(request):
-    """Create a new folder and auto-create 5 empty diary entries."""
-    data = request.data.copy()
-    print("User object:", request.user)
-    print("User type:", type(request.user))
-    data["user"] = request.user.pk  # Set user field manually
-    serializer = DiaryFolderSerializer(data=data)
-    if serializer.is_valid():
-        folder = serializer.save(user=request.user)
+    try:
+        data = request.data.copy()
+        data["user"] = request.user.pk
+        serializer = DiaryFolderSerializer(data=data)
 
-        # Auto-create 5 empty diary entries linked to the new folder
-        DiaryEntry.objects.bulk_create([
-            DiaryEntry(folder=folder, user=request.user, title=f"Entry {i+1}", content="") for i in range(5)
-        ])
+        if serializer.is_valid():
+            folder = serializer.save(user=request.user)
+            today = timezone.localdate()
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            DiaryEntry.objects.bulk_create([
+                DiaryEntry(
+                    folder=folder,
+                    user=request.user, 
+                    title=f"Entry {i+1}",
+                    content="",
+                    date=today + timedelta(days=i)
+                ) for i in range(5)
+            ])
 
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-@api_view(["GET"])
+        else:
+            print("Serializer errors:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception as e:
+        print("Exception occurred:", str(e))
+        print(format_exc())
+        return Response({"error": "Internal Server Error", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(["GET", "DELETE"])
 @permission_classes([IsAuthenticated])
-def retrieve_folder(request, pk):
-    """Retrieve a specific folder belonging to the authenticated user."""
+def retrieve_or_delete(request, pk):
+    """Retrieve or delete a specific folder belonging to the authenticated user."""
     folder = get_object_or_404(DiaryFolder, pk=pk, user=request.user)
-    serializer = DiaryFolderSerializer(folder)
-    return Response(serializer.data)
+
+    if request.method == "GET":
+        serializer = DiaryFolderSerializer(folder)
+        return Response(serializer.data)
+
+    elif request.method == "DELETE":
+        folder.delete()
+        return Response({"message": "Folder deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def folder_entries(request, folder_id):
+def folder_entries(request, pk):
     """
     List all diary entries inside a specific folder owned by the authenticated user.
     """
     try:
-        folder = DiaryFolder.objects.get(id=folder_id, user=request.user)
-        entries = DiaryEntry.objects.filter(folder=folder).order_by("-created_at")
+        folder = DiaryFolder.objects.get(id=pk, user=request.user)
+        entries = DiaryEntry.objects.filter(folder=folder).order_by("date")
         serializer = DiaryEntrySerializer(entries, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     except DiaryFolder.DoesNotExist:
@@ -77,16 +101,6 @@ def update_folder(request, pk):
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
-def delete_folder(request, pk):
-    """Delete a folder belonging to the authenticated user."""
-    folder = get_object_or_404(DiaryFolder, pk=pk, user=request.user)
-    folder.delete()
-    return Response({"message": "Folder deleted successfully."}, status=status.HTTP_204_NO_CONTENT)
-
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
