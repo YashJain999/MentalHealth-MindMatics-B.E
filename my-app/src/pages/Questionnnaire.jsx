@@ -623,26 +623,26 @@ export const questionImages = [
 
 // Array of questions
 const questions = [
-  "I found it hard to calm down",  
-  "My mouth felt dry",  
-  "I couldn’t feel happy",  
-  "I had trouble breathing",  
-  "I found it hard to start tasks",  
-  "I reacted too strongly to situations",  
-  "My hands or body shook sometimes",  
-  "I felt nervous and restless",  
-  "I was afraid of panicking in certain situations",  
-  "I felt like I had nothing to look forward to",  
-  "I got annoyed or upset easily",  
-  "I struggled to relax",  
-  "I felt sad or down",  
-  "I got frustrated when interrupted",  
-  "I felt like I was about to panic",  
-  "I couldn’t feel excited about anything",  
-  "I felt like I wasn’t important",  
-  "I got irritated easily",  
-  "I noticed my heart beating fast for no reason",  
-  "I felt scared without knowing why",  
+  "I found it hard to calm down",
+  "My mouth felt dry",
+  "I couldn’t feel happy",
+  "I had trouble breathing",
+  "I found it hard to start tasks",
+  "I reacted too strongly to situations",
+  "My hands or body shook sometimes",
+  "I felt nervous and restless",
+  "I was afraid of panicking in certain situations",
+  "I felt like I had nothing to look forward to",
+  "I got annoyed or upset easily",
+  "I struggled to relax",
+  "I felt sad or down",
+  "I got frustrated when interrupted",
+  "I felt like I was about to panic",
+  "I couldn’t feel excited about anything",
+  "I felt like I wasn’t important",
+  "I got irritated easily",
+  "I noticed my heart beating fast for no reason",
+  "I felt scared without knowing why",
   "I felt like life had no meaning"
 ];
 
@@ -668,22 +668,22 @@ const Questionnaire = () => {
   const [started, setStarted] = useState(false);
   const [showInstructions, setShowInstructions] = useState(true); // State to toggle instructions
   const cardVariants = {
-      hidden: { scale: 0.8, opacity: 0 },
-      visible: { scale: 1, opacity: 1, transition: { duration: 0.5 } }
+    hidden: { scale: 0.8, opacity: 0 },
+    visible: { scale: 1, opacity: 1, transition: { duration: 0.5 } }
   };
-  
+
   // CardWrapper (unchanged)
   const CardWrapper = ({ children, className = "" }) => (
-      <motion.div
-          variants={cardVariants}
-          initial="hidden"
-          animate="visible"
-          className={`bg-white/50 backdrop-blur-md rounded-lg shadow-lg p-4 ${className}`}
-      >
-          {children}
-      </motion.div>
+    <motion.div
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      className={`bg-white/50 backdrop-blur-md rounded-lg shadow-lg p-4 ${className}`}
+    >
+      {children}
+    </motion.div>
   );
-  
+
 
   // Update answers array
   const handleAnswerChange = (index, value) => {
@@ -747,7 +747,7 @@ const Questionnaire = () => {
     // Categorize based on score
     const getCategory = (score, type) => {
       if (type === "depression") {
-        if (score <= 9 )return "Normal";
+        if (score <= 9) return "Normal";
         if (score <= 13) return "Mild";
         if (score <= 20) return "Moderate";
         if (score <= 28) return "Severe";
@@ -796,24 +796,24 @@ const Questionnaire = () => {
       default: return "bg-gray-100 text-gray-800";
     }
   };
-      const [animate, setAnimate] = useState(false);
-  
-      useEffect(() => {
-          setAnimate(true);
-      }, []);
-      const data_se = [
-          { severity: 'Normal', depression: '0-9', anxiety: '0-7', stress: '0-14', color: '#6dd5ed' },
-          { severity: 'Mild', depression: '10-13', anxiety: '8-9', stress: '15-18', color: '#81c784' },
-          { severity: 'Moderate', depression: '14-20', anxiety: '10-14', stress: '19-25', color: '#fff176' },
-          { severity: 'Severe', depression: '21-27', anxiety: '15-19', stress: '26-33', color: '#ffb74d' },
-          { severity: 'Extremely Severe', depression: '28+', anxiety: '20+', stress: '34+', color: '#e57373' }
-      ];
+  const [animate, setAnimate] = useState(false);
+
+  useEffect(() => {
+    setAnimate(true);
+  }, []);
+  const data_se = [
+    { severity: 'Normal', depression: '0-9', anxiety: '0-7', stress: '0-14', color: '#6dd5ed' },
+    { severity: 'Mild', depression: '10-13', anxiety: '8-9', stress: '15-18', color: '#81c784' },
+    { severity: 'Moderate', depression: '14-20', anxiety: '10-14', stress: '19-25', color: '#fff176' },
+    { severity: 'Severe', depression: '21-27', anxiety: '15-19', stress: '26-33', color: '#ffb74d' },
+    { severity: 'Extremely Severe', depression: '28+', anxiety: '20+', stress: '34+', color: '#e57373' }
+  ];
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="min-h-screen bg-gradient-to-br from-orange-300 to-pink-300 flex items-center justify-center py-4 px-2"
-      style={{ 
+      style={{
         backgroundImage: `url('https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?w=1920&q=80')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
@@ -954,10 +954,10 @@ const Questionnaire = () => {
                   <motion.button
                     key={index}
                     className={`w-6 h-6 rounded-full flex items-center justify-center font-bold ${answers[index] !== null
-                        ? "bg-green-500 text-white"
-                        : index === currentQuestionIndex
-                          ? "bg-orange-500 text-white"
-                          : "bg-gray-200 text-gray-700"
+                      ? "bg-green-500 text-white"
+                      : index === currentQuestionIndex
+                        ? "bg-orange-500 text-white"
+                        : "bg-gray-200 text-gray-700"
                       }`}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
@@ -1075,61 +1075,61 @@ const Questionnaire = () => {
 
       {/* Result Section */}
       {submitted && result && (
-        
+
         <motion.div
           className="mt-4 bg-pink-50 p-4 rounded-lg shadow-md border border-orange-300 text-center"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-           <CardWrapper className="mb-6">
-                <div className="w-full  max-w-4xl mx-auto p-6 rounded-lg shadow-lg bg-gradient-to-r from-blue-50 to-purple-50">
-                    <h3 className="font-bold text-sm mb-0 text-gray-800">
-                        DASS-21 Score Interpretation:
-                    </h3>
-                    <h2 className="text-l font-bold mb-4 text-center text-gray-800">
-                        Depression Anxiety Stress Scale (DASS)
-                    </h2>
-                    <div className="overflow-hidden rounded-sm shadow-md">
-                        <table className="w-full border-collapse">
-                            <thead>
-                                <tr className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                                    <th className="px-4 py-3 text-left">Severity</th>
-                                    <th className="px-4 py-3 text-center">Depression</th>
-                                    <th className="px-4 py-3 text-center">Anxiety</th>
-                                    <th className="px-4 py-3 text-center">Stress</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {data_se.map((row, index) => (
-                                    <tr
-                                        key={index}
-                                        className="border-b border-gray-200 hover:bg-gray-50 transition-all duration-200"
-                                        style={{
-                                            transform: animate ? 'translateX(0)' : 'translateX(-100%)',
-                                            opacity: animate ? 1 : 0,
-                                            transition: `all 0.5s ease-out ${index * 0.1}s`
-                                        }}
-                                    >
-                                        <td className="px-4 py-3 font-medium" style={{ backgroundColor: `${row.color}33` }}>
-                                            <div className="flex items-center">
-                                                <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: row.color }}></div>
-                                                {row.severity}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">{row.depression}</td>
-                                        <td className="px-4 py-3 text-center">{row.anxiety}</td>
-                                        <td className="px-4 py-3 text-center">{row.stress}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    <p className="mt-4 text-sm text-gray-600 text-center">
-                        Based on DASS-21 scoring. For screening purposes only. Always consult with a healthcare professional.
-                    </p>
-                </div>
-            </CardWrapper>
+          <CardWrapper className="mb-6">
+            <div className="w-full  max-w-4xl mx-auto p-6 rounded-lg shadow-lg bg-gradient-to-r from-blue-50 to-purple-50">
+              <h3 className="font-bold text-sm mb-0 text-gray-800">
+                DASS-21 Score Interpretation:
+              </h3>
+              <h2 className="text-l font-bold mb-4 text-center text-gray-800">
+                Depression Anxiety Stress Scale (DASS)
+              </h2>
+              <div className="overflow-hidden rounded-sm shadow-md">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                      <th className="px-4 py-3 text-left">Severity</th>
+                      <th className="px-4 py-3 text-center">Depression</th>
+                      <th className="px-4 py-3 text-center">Anxiety</th>
+                      <th className="px-4 py-3 text-center">Stress</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data_se.map((row, index) => (
+                      <tr
+                        key={index}
+                        className="border-b border-gray-200 hover:bg-gray-50 transition-all duration-200"
+                        style={{
+                          transform: animate ? 'translateX(0)' : 'translateX(-100%)',
+                          opacity: animate ? 1 : 0,
+                          transition: `all 0.5s ease-out ${index * 0.1}s`
+                        }}
+                      >
+                        <td className="px-4 py-3 font-medium" style={{ backgroundColor: `${row.color}33` }}>
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: row.color }}></div>
+                            {row.severity}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center">{row.depression}</td>
+                        <td className="px-4 py-3 text-center">{row.anxiety}</td>
+                        <td className="px-4 py-3 text-center">{row.stress}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-4 text-sm text-gray-600 text-center">
+                Based on DASS-21 scoring. For screening purposes only. Always consult with a healthcare professional.
+              </p>
+            </div>
+          </CardWrapper>
           <motion.h2
             className="text-xl font-bold text-gray-800 mb-2"
             initial={{ y: -20 }}
@@ -1226,16 +1226,16 @@ const Questionnaire = () => {
             )}
           </AnimatePresence>
           <RouterLink to={`/home?email=${encodeURIComponent(email)}`}>
-          <motion.button
-            className="py-1 px-3 bg-orange-500 text-white text-sm font-bold rounded-lg hover:bg-orange-400 transition duration-200 shadow-lg mr-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5 }}
-          >
-            Home
-          </motion.button>
+            <motion.button
+              className="py-1 px-3 bg-orange-500 text-white text-sm font-bold rounded-lg hover:bg-orange-400 transition duration-200 shadow-lg mr-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.5 }}
+            >
+              Home
+            </motion.button>
           </RouterLink>
           <motion.button
             className="py-1 px-3 bg-orange-500 text-white text-sm font-bold rounded-lg hover:bg-orange-400 transition duration-200 shadow-lg mr-2"
@@ -1249,16 +1249,16 @@ const Questionnaire = () => {
             Take Test Again
           </motion.button>
           <RouterLink to={`/audio-testing?email=${encodeURIComponent(email)}&fromComponent=true`}>
-          <motion.button
-            className="py-1 px-3 bg-orange-500 text-white text-sm font-bold rounded-lg hover:bg-orange-400 transition duration-200 shadow-lg ml-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5 }}
-          >
-            Go to Audio Model
-          </motion.button>
+            <motion.button
+              className="py-1 px-3 bg-orange-500 text-white text-sm font-bold rounded-lg hover:bg-orange-400 transition duration-200 shadow-lg ml-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.5 }}
+            >
+              Go to Audio Model
+            </motion.button>
           </RouterLink>
         </motion.div>
       )}

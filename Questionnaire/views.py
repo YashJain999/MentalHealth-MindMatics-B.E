@@ -8,14 +8,13 @@ from .models import QuestionnaireResult
 from Audio.models import AudioResult
 from Video.models import VideoResult
 from userauth.models import PDFReport
-from Diary.models import DiaryFolder
+from Diary.models import DiaryFolder, DiaryEntry
 from .serializers import (
     QuestionnaireResultSerializer,
     AudioResultSerializer,
     VideoResultSerializer,
     OverAllResultSerializer
 )
-
 
 @api_view(['POST'])
 def save_results(request):
@@ -68,22 +67,30 @@ def combined_results(request):
         video_results = VideoResult.objects.filter(email=email).values(
             'time_stamp', 'depression', 'anxiety', 'stress'
         )
-        # diary_results = DiaryFolder.objects.filter(email=email).values(
-        #     'time_stamp', 'depression', 'anxiety', 'stress'
-        # )
+
         # # Assuming the Report model corresponds to overallPDFs.
         overall_pdfs = PDFReport.objects.filter(email=email).values()
+
+        user = User.objects.get(email=email)
+        folders_with_scores = DiaryFolder.objects.filter(user=user).exclude(
+            cumulative_depression_score__isnull=True
+        ).order_by('-created_at')
+
+        diary_results = []
+        for folder in folders_with_scores:
+            entries = DiaryEntry.objects.filter(folder=folder).order_by('date')
+            for entry in entries:
+                if entry.depression_score is not None and entry.anxiety_score is not None and entry.stress_score is not None:
+                    diary_results.append({
+                        'timestamp': entry.date.strftime('%Y-%m-%d'),
+                        'depression': entry.depression_score,
+                        'anxiety': entry.anxiety_score,
+                        'stress': entry.stress_score,
+                    })
         
     except Exception as e:
         return Response({'message': 'Error fetching data: ' + str(e)},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    diaryResults = [
-    {'timestamp': '2024-03-05 15:00', 'depression': 30, 'anxiety': 60, 'stress': 80},
-    {'timestamp': '2024-02-05 16:00', 'depression': 50, 'anxiety': 10, 'stress': 60},
-    {'timestamp': '2024-01-05 10:00', 'depression': 12, 'anxiety': 30, 'stress': 90},
-    {'timestamp': '2023-12-05 12:00', 'depression': 25, 'anxiety': 20, 'stress': 10},
-    {'timestamp': '2023-11-05 14:00', 'depression': 20, 'anxiety': 15, 'stress': 40},
-]
 
     # overallPDFs = [
     #     {'title': 'Comprehensive Mental Health Report - Q1 2024', 'url': '/pdfs/report1.pdf', 'date': 'March 2024'},
@@ -96,9 +103,8 @@ def combined_results(request):
         'questionnaireResults': QuestionnaireResultSerializer(questionnaire_results, many=True).data,
         'audioResults': AudioResultSerializer(audio_results, many=True).data,
         'videoResults': VideoResultSerializer(video_results, many=True).data,
-        'diaryResults': diaryResults,
+        'diaryResults': diary_results,
         'overallPDFs': OverAllResultSerializer(overall_pdfs,many=True).data,
-        # 'diaryResults': list(diary_results),
         # 'overallPDFs': list(overall_pdfs),
     }
     print(data)

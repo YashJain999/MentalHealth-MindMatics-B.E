@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from gradio_client import Client
 from .models import DiaryEntry, DiaryFolder
 from .serializers import DiaryEntrySerializer, DiaryFolderSerializer
-from .utils import fetch_das_scores, calculate_cumulative_scores
+from .utils import analyze_das_scores, calculate_cumulative_scores
 from django.db.models import Avg
 from django.http import JsonResponse
 import json
@@ -14,10 +14,9 @@ from datetime import timedelta, date, datetime
 from django.utils import timezone
 from traceback import format_exc
 from django.utils.timezone import localdate
+from rest_framework.exceptions import PermissionDenied
 
-
-
-client = Client("Karanjain09/Text_Analysis")
+client = Client("yjain121/Text_Analysis")
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -26,7 +25,6 @@ def list_folders(request):
     folders = DiaryFolder.objects.filter(user=request.user).order_by("-created_at")
     serializer = DiaryFolderSerializer(folders, many=True)
     return Response(serializer.data)
-
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -89,8 +87,6 @@ def folder_entries(request, pk):
     except DiaryFolder.DoesNotExist:
         return Response({"error": "Folder not found or unauthorized."}, status=status.HTTP_404_NOT_FOUND)
 
-
-
 @api_view(["PUT", "PATCH"])
 @permission_classes([IsAuthenticated])
 def update_folder(request, pk):
@@ -102,13 +98,39 @@ def update_folder(request, pk):
         return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+# views.py
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_das_scores_by_folder(request, pk):
+    """
+    Return DAS scores for the 5 diary entries of a folder.
+    """
+    try:
+        folder = DiaryFolder.objects.get(pk=pk, user=request.user)
+        entries = DiaryEntry.objects.filter(folder=folder).order_by('date')
+
+        data = [
+            {
+                "day": i + 1,
+                "depression": entry.depression_score,
+                "anxiety": entry.anxiety_score,
+                "stress": entry.stress_score,
+            }
+            for i, entry in enumerate(entries)
+        ]
+
+        return Response(data, status=status.HTTP_200_OK)
+
+    except DiaryFolder.DoesNotExist:
+        return Response({"error": "Folder not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def list_diary_entries(request):
     entries = DiaryEntry.objects.filter(user=request.user).order_by("-created_at")
     serializer = DiaryEntrySerializer(entries, many=True)
     return Response(serializer.data)
-
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -123,7 +145,6 @@ def create_diary_entry(request):
         return Response({"message": "Entry created", "entry_id": diary_entry.id}, status=status.HTTP_201_CREATED)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def retrieve_diary_entry(request, pk):
@@ -131,17 +152,27 @@ def retrieve_diary_entry(request, pk):
     serializer = DiaryEntrySerializer(entry)
     return Response(serializer.data)
 
-
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])
-def update_diary_entry(request, pk):
-    entry = get_object_or_404(DiaryEntry, pk=pk, user=request.user)
-    serializer = DiaryEntrySerializer(entry, data=request.data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response({"message": "Entry updated", "entry": serializer.data})
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+def update_diary_entry(request, entry_id):
+    """Update a diary entry, unless the folder has calculated cumulative scores."""
+    try:
+        entry = DiaryEntry.objects.get(id=entry_id, folder__user=request.user)
+        folder = entry.folder
 
+        # Restrict editing if cumulative score is present
+        if folder.cumulative_depression_score is not None:
+            raise PermissionDenied("Editing is disabled after cumulative score calculation.")
+
+        entry.content = request.data.get("content", entry.content)
+        entry.save()
+
+        return Response({"message": "Diary entry updated successfully."}, status=status.HTTP_200_OK)
+
+    except DiaryEntry.DoesNotExist:
+        return Response({"error": "Diary entry not found."}, status=status.HTTP_404_NOT_FOUND)
+    except PermissionDenied as e:
+        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
 
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
@@ -150,16 +181,15 @@ def delete_diary_entry(request, pk):
     entry.delete()
     return Response({"message": "Entry deleted"}, status=status.HTTP_204_NO_CONTENT)
 
-
-@api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def average_das_scores(request):
-    averages = DiaryEntry.objects.filter(user=request.user).aggregate(
-        avg_depression=Avg("depression_score"),
-        avg_anxiety=Avg("anxiety_score"),
-        avg_stress=Avg("stress_score")
-    )
-    return Response(averages)
+# @api_view(["GET"])
+# @permission_classes([IsAuthenticated])
+# def average_das_scores(request):
+#     averages = DiaryEntry.objects.filter(user=request.user).aggregate(
+#         avg_depression=Avg("depression_score"),
+#         avg_anxiety=Avg("anxiety_score"),
+#         avg_stress=Avg("stress_score")
+#     )
+#     return Response(averages)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -176,6 +206,7 @@ def get_entries_by_folder(request, folder_id):
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=400)
 
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def fetch_das_scores(request, entry_id):
@@ -183,7 +214,7 @@ def fetch_das_scores(request, entry_id):
     try:
         entry = DiaryEntry.objects.get(id=entry_id, folder__user=request.user)
 
-        result = fetch_das_scores(entry.id, entry.content, client)
+        result = analyze_das_scores(entry.id, entry.content, client)
 
         if not isinstance(result, tuple) or len(result) < 2:
             return Response({"error": "Invalid API response format"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -215,10 +246,10 @@ def fetch_das_scores(request, entry_id):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
-def calculate_cumulative_das(request, folder_id):
+def calculate_cumulative_das(request, pk):
     """Calculate and store cumulative DAS scores for all entries in a folder."""
     try:
-        folder = DiaryFolder.objects.get(id=folder_id, user=request.user)
+        folder = DiaryFolder.objects.get(id=pk, user=request.user)
         entries = DiaryEntry.objects.filter(folder=folder)
 
         if any(entry.content.strip() == "" for entry in entries):
@@ -226,6 +257,15 @@ def calculate_cumulative_das(request, folder_id):
                 {"error": "All diary entries must have content before calculating cumulative scores."},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Check if the last entry's date has passed (i.e., it's the next day)
+        last_entry = entries.order_by("date").last()
+        today = datetime.now().date()
+
+        if last_entry.date >= today:
+            return Response({
+                "error": "Cumulative DAS can only be calculated after the last diary date has passed."
+            }, status=403)
 
         cumulative_depression = sum(entry.depression_score for entry in entries)
         cumulative_anxiety = sum(entry.anxiety_score for entry in entries)
@@ -242,31 +282,6 @@ def calculate_cumulative_das(request, folder_id):
         return Response({"error": "Folder not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-from rest_framework.exceptions import PermissionDenied
-
-
-@api_view(["PUT"])
-@permission_classes([IsAuthenticated])
-def update_diary_entry(request, entry_id):
-    """Update a diary entry, unless the folder has calculated cumulative scores."""
-    try:
-        entry = DiaryEntry.objects.get(id=entry_id, folder__user=request.user)
-        folder = entry.folder
-
-        # Restrict editing if cumulative score is present
-        if folder.cumulative_depression_score is not None:
-            raise PermissionDenied("Editing is disabled after cumulative score calculation.")
-
-        entry.content = request.data.get("content", entry.content)
-        entry.save()
-
-        return Response({"message": "Diary entry updated successfully."}, status=status.HTTP_200_OK)
-
-    except DiaryEntry.DoesNotExist:
-        return Response({"error": "Diary entry not found."}, status=status.HTTP_404_NOT_FOUND)
-    except PermissionDenied as e:
-        return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])

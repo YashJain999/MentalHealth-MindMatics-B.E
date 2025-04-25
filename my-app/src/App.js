@@ -41,8 +41,8 @@ function App() {
         <Route path="diary/folders/diaryentries/:folderId" element={<Diary />} /> 
         <Route path="/personalizedrecommendation" element={<PersonalizedRecommendation />} />  
         <Route path="/stressreliefRecommendations" element={<StressReliefRecommendations />} /> 
-        <Route path="/diaryreport" element={<DiaryReport />} />
-      </Routes>
+        <Route path="/diary/report/:folderId" element={<DiaryReport />} />
+        </Routes>
     </div>
   );
 }

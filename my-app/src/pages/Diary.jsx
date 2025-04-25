@@ -330,6 +330,8 @@ const Diary = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [showSavedNotification, setShowSavedNotification] = useState(false);
     const textareaRef = useRef(null);
+    const [isLocked, setIsLocked] = useState(false);
+
 
     const linesPerPage = 10;
 
@@ -468,15 +470,6 @@ const Diary = () => {
                 );
                 setEntries(updatedEntries);
                 fetchDASScores(selectedEntry.id);
-
-                const allFilled = updatedEntries.every(
-                    entry => entry.content && entry.content.trim() !== ""
-                );
-
-                if (allFilled) {
-                    await calculateCumulativeDAS(folderId);
-                }
-
                 setShowSavedNotification(true);
                 setTimeout(() => setShowSavedNotification(false), 2000);
             }
@@ -487,6 +480,28 @@ const Diary = () => {
             setIsSaving(false);
         }
     };
+
+    useEffect(() => {
+        const fetchFolderDetails = async () => {
+            try {
+                const response = await api.get(`/api/diary/folders/${folderId}/`);
+                setDiaryName(response.data.name);
+
+                // Lock if any cumulative score exists
+                if (
+                    response.data.cumulative_depression_score !== null ||
+                    response.data.cumulative_anxiety_score !== null ||
+                    response.data.cumulative_stress_score !== null
+                ) {
+                    setIsLocked(true);
+                }
+            } catch (error) {
+                console.error("Error fetching folder details:", error);
+            }
+        };
+
+        fetchFolderDetails();
+    }, [folderId]);
 
     useEffect(() => {
         const fetchFolderName = async () => {
@@ -698,26 +713,35 @@ const Diary = () => {
                         >
                             <textarea
                                 ref={textareaRef}
-                                className="w-full h-full bg-transparent text-amber-900 resize-none font-serif text-xl outline-none border-none"
+                                className={`w-full h-full resize-none font-serif text-xl outline-none ${isLocked
+                                        ? "bg-gray-50 cursor-not-allowed text-gray-600"
+                                        : "bg-transparent text-amber-900"
+                                    }`}
+                                disabled={isLocked}
                                 value={pages[currentPage]}
                                 onChange={updateCurrentPageContent}
                                 placeholder="Write your thoughts here..."
                                 style={{
                                     lineHeight: "3rem",
-                                    background: "transparent",
                                     padding: "2rem 3rem",
-                                    position: "absolute",
-                                    top: 0,
-                                    left: 0,
-                                    right: 0,
-                                    bottom: 0,
+                                    position: "relative",  // <- important
+                                    zIndex: 10,             // <- ensure it stays above any background
                                     boxSizing: "border-box",
                                     whiteSpace: "pre-wrap",
                                     overflowWrap: "break-word",
                                     wordBreak: "normal",
                                     width: "100%",
+                                    height: "100%",
                                 }}
                             />
+
+
+                            {isLocked && (
+                                <p className="text-red-500 text-sm italic mt-2">
+                                    ✨ Editing is disabled after cumulative DAS scores are calculated.
+                                </p>
+                            )}
+
                         </motion.div>
                     </AnimatePresence>
 
@@ -779,18 +803,24 @@ const Diary = () => {
                     </motion.button>
 
                     <motion.button
-                        className="px-6 py-2 bg-amber-600 text-white rounded-md font-serif shadow-md flex items-center"
+                        className={`px-6 py-2 text-white rounded-md font-serif shadow-md flex items-center transition duration-300 ${isLocked ? "bg-gray-400 cursor-not-allowed" : "bg-amber-600 hover:bg-amber-700"
+                            }`}
                         onClick={handleSave}
-                        disabled={isSaving}
+                        disabled={isSaving || isLocked}
                         variants={buttonHoverVariants}
-                        whileHover="hover"
-                        whileTap="tap"
+                        whileHover={!isLocked ? "hover" : ""}
+                        whileTap={!isLocked ? "tap" : ""}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 1, duration: 0.5 }}
                     >
                         {isSaving ? (
                             <span>Saving...</span>
+                        ) : isLocked ? (
+                            <>
+                                <FontAwesomeIcon icon={faSave} className="mr-2" />
+                                Editing Locked
+                            </>
                         ) : (
                             <>
                                 <FontAwesomeIcon icon={faSave} className="mr-2" />
@@ -798,6 +828,7 @@ const Diary = () => {
                             </>
                         )}
                     </motion.button>
+
                     <RouterLink to="/diaryreport" >
                         <motion.button
                             className="px-6 py-2 bg-amber-600 text-white rounded-md font-serif shadow-md flex items-center"

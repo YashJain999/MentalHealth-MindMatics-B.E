@@ -2,7 +2,7 @@ from gradio_client import Client
 from .models import DiaryEntry,DiaryFolder
 
 
-def fetch_das_scores(entry_id, diary_text ,client):
+def analyze_das_scores(entry_id, diary_text ,client):
     """
     Sends diary content to the Gradio API and updates the entry with DAS scores.
     """

@@ -306,7 +306,7 @@ def send_whatsapp_alert_alternative(user_email, depression_score, anxiety_score,
     """
     try:
         # Guardian's phone number (remove '+' for URL)
-        guardian_phone = "+919833973674"
+        guardian_phone = "+917666123572"
         if guardian_phone.startswith('+'):
             guardian_phone = guardian_phone[1:]
             

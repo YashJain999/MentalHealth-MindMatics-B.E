@@ -10,8 +10,6 @@ import api from '../api';
 import { toast } from "react-toastify";
 import StressReliefRecommendations from "../components/StressReliefRecommendations";
 
-
-
 const Cumulative_Report = () => {
     const [activeTab, setActiveTab] = useState('overview');
     const [isDownloading, setIsDownloading] = useState(false);

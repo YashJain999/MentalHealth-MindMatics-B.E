@@ -14,10 +14,10 @@ const DiaryReport = () => {
   const [hasPrinted, setHasPrinted] = useState(false);
   const reportRef = useRef(null);
   const { state } = useLocation();
-  const { email } = state || {};
+  const { email, scores } = state || {};
 
   // Hardcoded diary data for 5 days (replace with API data in a real app)
-  const diaryData = [
+  const diaryData = scores || [
     { day: 1, depression: 50, anxiety: 40, stress: 80 },
     { day: 2, depression: 5, anxiety: 50, stress: 85 },
     { day: 3, depression: 10, anxiety: 5, stress: 15 },

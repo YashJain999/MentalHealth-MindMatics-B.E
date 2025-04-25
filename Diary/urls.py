@@ -7,6 +7,7 @@ from .views import (
     update_diary_entry,
     list_folders,
     retrieve_or_delete,
+    get_das_scores_by_folder,
 )
 
 urlpatterns = [
@@ -16,6 +17,8 @@ urlpatterns = [
     path("api/diary/folders/<int:pk>/entries/", folder_entries, name="folder_entries"),
     path("api/diary/folders/<int:pk>/calculate-cumulative/", calculate_cumulative_das, name="calculate_cumulative_das"),
     path("api/diary/folders/", list_folders, name="list_folders"),
+    path("api/diary/folders/<int:pk>/das-scores/", get_das_scores_by_folder, name="folder_das_scores"),
+
 
 
     # Entry APIs

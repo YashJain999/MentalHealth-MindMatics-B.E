@@ -306,6 +306,23 @@ const FoldersPage = () => {
         }
     };
 
+    const handleGenerateReport = async (folderId) => {
+        try {
+          const response = await api.get(`/api/diary/folders/${folderId}/das-scores/`);
+          const dasScores = response.data;
+      
+          navigate('/diary/report/${folderId}', {
+            state: {
+              scores: dasScores,
+              email: email,  // if you want to include email
+            }
+          });
+        } catch (error) {
+          console.error("Failed to fetch DAS scores:", error);
+        }
+      };
+      
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-teal-50 via-blue-50 to-purple-50 flex flex-col items-center py-10 px-5 relative overflow-hidden">
             <div className="absolute top-4 right-6 flex items-center space-x-2 bg-black/30 px-4 py-2 rounded-full shadow-lg text-white">
@@ -541,6 +558,14 @@ const FoldersPage = () => {
                                                             <FaFeather className="text-teal-500" />
                                                             <span>Open this collection to view and write in your Diary</span>
                                                         </p>
+                                                        {folder.cumulative_depression_score !== null && (
+                                                                <button
+                                                                    onClick={() => handleGenerateReport(folder.id)}
+                                                                    className="text-sm text-blue-600 hover:underline ml-2"
+                                                                >
+                                                                    📄 Generate Report
+                                                                </button>
+                                                            )}
                                                         <motion.button
                                                             className="w-full py-4 px-6 text-white bg-gradient-to-r from-blue-500 via-teal-500 to-blue-500 rounded-lg shadow-md transition-all duration-300 flex items-center justify-center gap-3 group overflow-hidden relative"
                                                             onClick={() => openDiary(folder.id)}

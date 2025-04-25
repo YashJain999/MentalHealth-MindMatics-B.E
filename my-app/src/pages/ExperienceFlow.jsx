@@ -58,7 +58,8 @@ const useSpeechToText = ({ currentIndex, setResponses }) => {
       }
       setResponses((prevResponses) => ({
         ...prevResponses,
-        [currentIndex]: finalTranscript + interimTranscript,
+        [currentIndex]: finalTranscript + interimTranscript
+        ,
       }));
     };
 
@@ -444,12 +445,10 @@ const ExperienceFlow = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [testCompleted, setTestCompleted] = useState(false);
-        const [searchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const email = searchParams.get('email');
   const fromComponent = searchParams.get('fromComponent');
-    const [isLoading, setIsLoading] = useState(false);
-  
-
+  const [isLoading, setIsLoading] = useState(false);
 
   const streamRef = useRef(null);
 
@@ -628,7 +627,8 @@ const ExperienceFlow = () => {
     if (results) {
       return <VideoGraphs results={results}  email={email} fromComponent={fromComponent}/>;
     }
-            // Add this right after the above if statement
+
+// Add this right after the above if statement
 if (isLoading) {
   return <Loading />;
 }
