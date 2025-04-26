@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { media } from '../components/mediaData';
@@ -7,11 +6,9 @@ import { getRandomizedQuestions } from '../components/getRandomizedQuestions';
 import api from "../api";
 import { ACCESS_TOKEN } from "../constants";
 import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
-// import { FiChevronRight, FiCheck, FiX } from "react-icons/fi";
 import VideoGraphs from "../components/VideoGraphs";
 import Loading from "../components/Loading";
-
-
+import SessionTimeout from "../components/SessionTimeout"; 
 // Constants
 const DURATION = 5; // seconds per slide
 const fadeVariant = {
@@ -101,7 +98,6 @@ const useSpeechToText = ({ currentIndex, setResponses }) => {
   return { isListening, startListening, stopListening };
 };
 
-// Separate video recording hook
 const useVideoRecording = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [videoBlob, setVideoBlob] = useState(null);
@@ -110,82 +106,170 @@ const useVideoRecording = () => {
   const streamRef = useRef(null);
   const recordedChunksRef = useRef([]);
 
-  const cleanupStream = useCallback(() => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => {
-        track.stop();
-        console.log("Track stopped:", track.kind);
-      });
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-  }, []);
-
+  // Start recording only once at the beginning
   const startRecording = useCallback(async () => {
+    console.log("Starting recording attempt...");
     try {
-      // Clean up any existing stream first
-      cleanupStream();
-
+      // If already recording, don't start again
+      if (isRecording) {
+        console.log("Already recording, not starting again");
+        return;
+      }
+      
+      // Clean up any existing streams first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      
+      // Reset recorded chunks
+      recordedChunksRef.current = [];
+      
+      console.log("Requesting media stream...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
       });
       
+      console.log("Media stream obtained:", !!stream);
       streamRef.current = stream;
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        console.log("Video element updated with stream");
       }
-      
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      recordedChunksRef.current = [];
 
+      // Create new media recorder
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'video/webm;codecs=vp9,opus'
+      });
+      
+      console.log("Media recorder created:", !!mediaRecorder);
+      mediaRecorderRef.current = mediaRecorder;
+
+      // Set up data available handler to collect chunks
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        console.log("Data available event:", event.data.size);
+        if (event.data && event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
         }
       };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-        setVideoBlob(blob);
-        cleanupStream(); // Clean up stream when recording stops
-      };
-
-      mediaRecorder.start();
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Error accessing webcam:', error);
-      cleanupStream();
+   // Setup stop handler
+   mediaRecorder.onstop = () => {
+    console.log(`Recording stopped. Chunks collected: ${recordedChunksRef.current.length}`);
+    
+    if (recordedChunksRef.current.length > 0) {
+      const blob = new Blob(recordedChunksRef.current, { 
+        type: 'video/webm' 
+      });
+      console.log("Blob created:", blob.size);
+      setVideoBlob(blob);
+    } else {
+      console.error("No data chunks collected during recording");
     }
-  }, [cleanupStream]);
+  };
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+  // Start recording with 1 second timeslices to ensure data is collected
+  console.log("Starting media recorder...");
+  mediaRecorder.start(1000);
+  setIsRecording(true);
+  console.log("Recording started successfully");
+} catch (error) {
+  console.error("Error starting recording:", error);
+  alert(`Error accessing camera/microphone: ${error.message}`);
+}
+}, [isRecording]);
+
+const stopRecording = useCallback(() => {
+  console.log("Stopping recording attempt...");
+  if (!isRecording) {
+    console.log("Not recording, nothing to stop");
+    return;
+  }
+
+  try {
+    // Request a final dataavailable event
+    if (mediaRecorderRef.current) {
+      console.log("Media recorder state before stop:", mediaRecorderRef.current.state);
+      
+      // Only stop if it's recording
+      if (mediaRecorderRef.current.state === 'recording') {
+        // Request additional data
+        mediaRecorderRef.current.requestData();
+        
+        // Stop the recorder
+        mediaRecorderRef.current.stop();
+        console.log("Media recorder stopped");
+      } else {
+        console.warn("Media recorder not in recording state:", mediaRecorderRef.current.state);
+      }
+    } else {
+      console.warn("No media recorder reference to stop");
+    }
+    
+    // Stop all tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log(`Track ${track.kind} stopped`);
+      });
+      streamRef.current = null;
+    }
+    
+    // Create blob from chunks if we have any
+    if (recordedChunksRef.current.length > 0) {
+      const blob = new Blob(recordedChunksRef.current, { 
+        type: 'video/webm' 
+      });
+      console.log("Blob created in stopRecording:", blob.size);
+      setVideoBlob(blob);
+    } else {
+      console.error("No recorded chunks available to create blob");
+    }
+    
+    setIsRecording(false);
+  } catch (error) {
+    console.error("Error stopping recording:", error);
+  }
+}, [isRecording]);
+
+// Force blob creation
+const getRecordingBlob = useCallback(() => {
+  console.log("Manually creating blob from chunks...");
+  if (recordedChunksRef.current.length > 0) {
+    const blob = new Blob(recordedChunksRef.current, { 
+      type: 'video/webm' 
+    });
+    console.log("Manual blob creation:", blob.size);
+    setVideoBlob(blob);
+    return blob;
+  }
+  return null;
+}, []);
+
+// Cleanup function
+useEffect(() => {
+  return () => {
+    console.log("Cleanup: stopping recording if active");
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
     
-    cleanupStream();
-    setIsRecording(false);
-  }, [cleanupStream]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopRecording();
-      cleanupStream();
-    };
-  }, [stopRecording, cleanupStream]);
-
-  return { 
-    isRecording, 
-    videoBlob, 
-    videoRef, 
-    startRecording, 
-    stopRecording 
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
   };
+}, []);
+
+return { 
+  isRecording, 
+  videoBlob, 
+  videoRef, 
+  startRecording, 
+  stopRecording,
+  getRecordingBlob,
+  streamRef
+};
 };
 
 // Welcome screen component
@@ -455,27 +539,28 @@ const ExperienceFlow = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [testCompleted, setTestCompleted] = useState(false);
-  const [searchParams] = useSearchParams();
+  const [showSessionTimeout, setShowSessionTimeout] = useState(false);
+        const [searchParams] = useSearchParams();
   const email = searchParams.get('email');
   const fromComponent = searchParams.get('fromComponent');
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const { 
-      isRecording, 
-      videoBlob, 
-      videoRef, 
-      startRecording, 
-      stopRecording 
-    } = useVideoRecording();
+    const [isLoading, setIsLoading] = useState(false);
 
-  const streamRef = useRef(null);
 
   const { isListening, startListening, stopListening } = useSpeechToText({ 
     currentIndex, 
     responses, 
     setResponses 
   });
-
+  
+  const { 
+    isRecording, 
+    videoBlob, 
+    videoRef, 
+    startRecording, 
+    stopRecording,
+    getRecordingBlob,
+    streamRef,
+  } = useVideoRecording();
 
   // Handle prediction API call
   const handlePredict = useCallback(async (videoBlob, responses) => {
@@ -511,129 +596,145 @@ const ExperienceFlow = () => {
       setMessage({ type: "success", text: "Prediction successful!" });
     } catch (error) {
       console.error("Prediction error:", error);
-      setMessage({ type: "error", text: "Something went wrong!" });
+      
+      // Check for specific error statuses
+      if (error.response?.status === 401) {
+        setShowSessionTimeout(true);
+        setMessage({ type: "error", text: "Your session has expired. Please log in again." });
+      } else if (error.response?.status === 500) {
+        alert("There is a problem with the internal server. Please try again later or contact support.");
+        setMessage({ type: "error", text: "Internal server error. Please try again later." });
+      } else {
+        setMessage({ type: "error", text: "Something went wrong!" });
+      }
+      
       setIsLoading(false); // Reset loading state on error
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Start the experience
-  const handleStart = useCallback(() => {
-    const randomizedQuestions = getRandomizedQuestions(media);
-    setUserType('user');
-    setMediaList(randomizedQuestions);
-    setStarted(true);
-    setCurrentIndex(0);
-    setShowQuestion(false);
+// Updated handleStart function
+const handleStart = useCallback(() => {
+  console.log("Starting experience flow...");
+  const randomizedQuestions = getRandomizedQuestions(media);
+  setUserType('user');
+  setMediaList(randomizedQuestions);
+  setStarted(true);
+  setCurrentIndex(0);
+  setShowQuestion(false);
+  
+  // Set timeout to ensure UI is rendered before starting camera
+  setTimeout(() => {
+    console.log("Initializing video recording...");
     startRecording();
-  }, [startRecording]);
-
-   // End the experience
-   const handleEnd = useCallback(() => {
-    console.log('User Responses:', responses);
+  }, 500);
+}, [startRecording]);
+  
+  
+  // Only stop recording at the end
+  const handleEnd = useCallback(() => {
+    console.log('Ending experience. User Responses:', responses);
     
     if (isListening) {
       stopListening();
     }
     
-    stopRecording();
     setStarted(false);
-    setTestCompleted(true);
-    
-    if (videoBlob && responses) {
-      handlePredict(videoBlob, responses);
-    }
-    
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    
-    setTimeout(() => {
-      setStarted(false);
-      setTestCompleted(true);
-    }, 1000);
-  }, [responses, stopListening, stopRecording, videoBlob, handlePredict]);
-
-  // Handle next question
-  const handleNext = useCallback(() => {
-    if (!responses[currentIndex] || responses[currentIndex].trim() === '') {
-      alert('Please enter a response before proceeding!');
-      return;
-    }
+  setTestCompleted(true);
   
-    if (isListening) {
-      stopListening();
-    }
+  // First stop the recording
+  console.log("Stopping recording at experience end");
+  stopRecording();
   
-    if (currentIndex < mediaList.length - 1) {
-      setCurrentIndex(currentIndex + 1);
-      setShowQuestion(false);
+    // Give more time for the blob to be created
+  console.log("Waiting for blob creation...");
+  setTimeout(() => {
+    // Try to get the blob directly if it's not set yet
+    let currentBlob = videoBlob;
+    
+    console.log("Current blob status:", !!currentBlob);
+    
+    if (!currentBlob && typeof getRecordingBlob === 'function') {
+      console.log("Attempting to manually get recording blob");
+      currentBlob = getRecordingBlob();
+    }
+    
+    if (currentBlob) {
+      console.log("Blob available, submitting prediction");
+      handlePredict(currentBlob, responses);
     } else {
-      handleEnd();
+      console.error("Missing video blob:", { responses });
+      setMessage({ type: "error", text: "Failed to capture video recording. Please try again." });
+      setLoading(false);
+      setIsLoading(false);
     }
-  }, [currentIndex, mediaList.length, responses, isListening, stopListening, handleEnd]);
-
-  // Progress timer effect
+  }, 2000); // Wait even longer - 2 seconds
+}, [isListening, stopListening, stopRecording, videoBlob, responses, handlePredict, getRecordingBlob]);
+  
+  // Remove startRecording from this useEffect
   useEffect(() => {
     let timer;
     let progressTimer;
-
+  
     if (started && currentIndex < mediaList.length) {
       setShowQuestion(false);
       setProgress(0);
-      startRecording();
-
+      // NO startRecording() call here - this happens only once at the beginning
+  
       progressTimer = setInterval(() => {
         setProgress((prev) => (prev < 100 ? prev + 100 / (DURATION * 10) : 100));
       }, 100);
-
+  
       timer = setTimeout(() => {
         clearInterval(progressTimer);
         setShowQuestion(true);
       }, DURATION * 1000);
     }
-
+  
     return () => {
       clearTimeout(timer);
       clearInterval(progressTimer);
     };
-  }, [started, currentIndex, mediaList.length, startRecording]);
-
-  // Clean up effect
+  }, [started, currentIndex, mediaList.length]);
+  
+  // Add a cleanup effect for when the component unmounts
   useEffect(() => {
     return () => {
-      stopRecording();
-    };
-  }, [stopRecording]);
-
-  // Component unmount cleanup
-  useEffect(() => {
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => {
-          track.stop();
-          console.log("Component unmount: Track stopped:", track.kind);
-        });
-        streamRef.current = null;
-      }
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
+      console.log("Component unmounting - cleaning up recording");
+      if (isRecording) {
+        stopRecording();
       }
     };
-  }, []);
-
-  // Test completion cleanup
+  }, [isRecording, stopRecording]);
+    
   useEffect(() => {
-    if (testCompleted) {
-      stopRecording();
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+    // If we have a stream but the video element doesn't have it as source
+    if (streamRef.current && videoRef.current && !videoRef.current.srcObject) {
+      console.log("Reconnecting video element to existing stream");
+      videoRef.current.srcObject = streamRef.current;
     }
-  }, [testCompleted, stopRecording]);
+  }, [currentIndex]); // Re-run when the question index changes
 
+
+ // Handle next question without affecting recording
+ const handleNext = useCallback(() => {
+  if (!responses[currentIndex] || responses[currentIndex].trim() === '' || isListening===true) {
+    alert('Please enter a response before proceeding or turn off the mic!');
+    return;
+  }
+
+  if (isListening) {
+    stopListening();
+  }
+
+  if (currentIndex < mediaList.length - 1) {
+    setCurrentIndex(currentIndex + 1);
+    setShowQuestion(false);
+  } else {
+    handleEnd();
+  }
+}, [currentIndex, mediaList.length, responses, isListening, stopListening, handleEnd]);
     // If results exist, render the Graphs component instead of the recording UI.
     if (results) {
       return <VideoGraphs results={results}  email={email} fromComponent={fromComponent}/>;
@@ -748,25 +849,6 @@ if (isLoading) {
               />
             </div>
 
-            {/* Record Control */}
-            <div className="mt-4">
-              {isRecording ? (
-                <button
-                  onClick={stopRecording}
-                  className="fixed top-44 right-4 px-4 py-2 bg-red-500 text-white rounded"
-                >
-                  Stop Recording
-                </button>
-              ) : (
-                <button
-                  onClick={startRecording}
-                  className="fixed top-44 right-4 px-4 py-2 bg-blue-500 text-white rounded"
-                >
-                  Start Recording
-                </button>
-              )}
-            </div>
-
             {/* Response Input */}
             <motion.div
               initial="hidden"
@@ -796,13 +878,33 @@ if (isLoading) {
                   required
                 />
                 {/* Microphone Button */}
+                {/* Sound wave animation */}
+   
                 <button
-                  type="button"
-                  onClick={isListening ? stopListening : startListening}
-                  className="absolute top-2 right-2 p-2 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 focus:ring-2 focus:ring-blue-300 transition"
-                >
-                  {isListening ? <FaMicrophoneSlash size={20} /> : <FaMicrophone size={20} />}
-                </button>
+  type="button"
+  onClick={isListening ? stopListening : startListening}
+  className="absolute top-2 right-2 p-3 rounded-full shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50"
+  style={{
+    background: isListening 
+      ? 'linear-gradient(to right, #3b82f6, #2563eb)' 
+      : 'linear-gradient(to right, #6b7280, #4b5563)'
+  }}
+>
+  {isListening ? (
+    <div className="relative w-5 h-5">
+      {/* Animated circles */}
+      <div className="absolute inset-0 rounded-full bg-blue-200 opacity-20 animate-ping"></div>
+      <div className="absolute -inset-1 rounded-full border-2 border-white opacity-30 animate-pulse"></div>
+      
+      {/* Microphone icon */}
+      <FaMicrophoneSlash size={20} className="relative text-white" />
+    </div>
+  ) : (
+    <div className="relative w-5 h-5">
+      <FaMicrophone size={20} className="text-white transform transition-transform hover:scale-110" />
+    </div>
+  )}
+</button>
               </div>
 
               <div className="flex justify-between mt-4">
@@ -823,7 +925,7 @@ if (isLoading) {
           </div>
         </motion.div>
       )}
-
+      {showSessionTimeout && <SessionTimeout />}
       {/* Results Display */}
       {testCompleted && results && Object.keys(results).length > 0 && (
         <VideoGraphs results={results} email={email} />

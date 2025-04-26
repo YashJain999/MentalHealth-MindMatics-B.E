@@ -154,8 +154,11 @@ def predict_emotion(request):
                 api_name="/predict"
             )
             # Extract mental health scores from video analysis
-            print(result)
-            video_prediction = result[2]  # JSON data with mental health scores
+            print(result[0], result[2])
+            emotion_summary = result[0] 
+            average_confidence_scores = emotion_summary.get("Average Confidence Scores", {})
+
+            video_prediction = result[2]   # JSON data with mental health scores
             
             # Delete the uploaded file after processing
             default_storage.delete(file_path)
@@ -329,6 +332,7 @@ def predict_emotion(request):
         "anxiety": final_anxiety,
         "stress": final_stress
     },
+    "average_confidence_scores": average_confidence_scores if has_video else {},
     "message": "Results processed and saved successfully."
 }
 

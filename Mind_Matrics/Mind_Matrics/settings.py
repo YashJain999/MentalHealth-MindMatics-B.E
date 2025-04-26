@@ -55,7 +55,7 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     # Specifies how long the access token will remain valid.
     # In this case, the access token will expire after 30 minutes.
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=2),  # Access token valid for 30 minutes
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),  # Access token valid for 30 minutes
 
     # Specifies how long the refresh token will remain valid.
     # In this case, the refresh token will expire after 1 day.

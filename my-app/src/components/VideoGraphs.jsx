@@ -20,6 +20,12 @@ const VideoGraphs = ({ results, email, fromComponent }) => {
   const navigate = useNavigate();
 
   // Extract final scores, video prediction, and text predictions from the results
+  const average_emotion = results && results.average_confidence_scores
+  ? Object.entries(results.average_confidence_scores).map(([label, score]) => ({
+      label,
+      score
+    }))
+  : [];
   const finalScores = results && results.final_scores ? results.final_scores : { depression: 0, anxiety: 0, stress: 0 };
   const videoPrediction = results && results.video_prediction ? results.video_prediction : { depression: 0, anxiety: 0, stress: 0 };
   const textPredictions = results && results.text_predictions ? results.text_predictions : [];
@@ -55,6 +61,34 @@ const VideoGraphs = ({ results, email, fromComponent }) => {
   const finalDepression = finalScores.depression.toFixed(2);
   const finalAnxiety = finalScores.anxiety.toFixed(2);
   const finalStress = finalScores.stress.toFixed(2);
+
+  // Prepare chart data for Average Emotion
+  const averageEmotionChartData = {
+    labels: average_emotion.map(item => item.label),
+    datasets: [
+      {
+        label: "Average Emotion",
+        data: average_emotion.map(item => item.score),
+        backgroundColor: [
+          "rgba(75, 192, 192, 0.7)",
+          "rgba(153, 102, 255, 0.7)",
+          "rgba(255, 159, 64, 0.7)",
+          "rgba(255, 99, 132, 0.7)",
+          "rgba(54, 162, 235, 0.7)",
+          "rgba(255, 206, 86, 0.7)"
+        ],
+        borderColor: [
+          "rgba(75, 192, 192, 1)",
+          "rgba(153, 102, 255, 1)",
+          "rgba(255, 159, 64, 1)",
+          "rgba(255, 99, 132, 1)",
+          "rgba(54, 162, 235, 1)",
+          "rgba(255, 206, 86, 1)"
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
 
   // Prepare chart data for Video Prediction
   const videoChartData = {
@@ -229,7 +263,7 @@ const VideoGraphs = ({ results, email, fromComponent }) => {
                 </div>
             </CardWrapper>
             </motion.div>
-
+            
       {/* Final DAS Summary Cards */}
       <motion.div variants={container} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 w-full max-w-4xl">
         {[
@@ -262,6 +296,28 @@ const VideoGraphs = ({ results, email, fromComponent }) => {
             </motion.div>
           );
         })}
+      </motion.div>
+
+      {/* Average Emotion Chart */}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 0.2 }}
+        className="w-full max-w-4xl mb-8 bg-white rounded-2xl shadow-xl overflow-hidden"
+      >
+        <div className="h-2 bg-gradient-to-r from-teal-400 to-emerald-600"></div>
+        <div className="p-6">
+          <h2 className="text-2xl font-semibold mb-6 text-gray-800">Average Emotion</h2>
+          <div className="h-64 md:h-80">
+            {average_emotion.length > 0 ? (
+              <Bar data={averageEmotionChartData} options={chartOptions} />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No emotion data available
+              </div>
+            )}
+          </div>
+        </div>
       </motion.div>
 
       {/* Video Analysis Chart */}
