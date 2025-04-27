@@ -1125,14 +1125,6 @@ const Result = () => {
     const [timeRange, setTimeRange] = useState('all');
     const [activeMetrics, setActiveMetrics] = useState(['depression', 'anxiety', 'stress']);
 
-    // const diaryResults = [
-    //     { timestamp: '2024-03-05 15:00', depression: 3, anxiety: 2, stress: 3 },
-    //     { timestamp: '2024-02-05 16:00', depression: 4, anxiety: 3, stress: 4 },
-    //     { timestamp: '2024-01-05 10:00', depression: 5, anxiety: 4, stress: 5 },
-    //     { timestamp: '2023-12-05 12:00', depression: 6, anxiety: 5, stress: 5 },
-    //     { timestamp: '2023-11-05 14:00', depression: 7, anxiety: 6, stress: 6 },
-    // ];
-
     // const overallPDFs = [
     //     { title: 'Comprehensive Mental Health Report - Q1 2024', url: '/pdfs/report1.pdf', date: 'March 2024' },
     //     { title: 'Monthly Progress Summary', url: '/pdfs/report2.pdf', date: 'February 2024' },

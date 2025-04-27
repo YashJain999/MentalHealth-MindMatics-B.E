@@ -15,6 +15,7 @@ from .serializers import (
     VideoResultSerializer,
     OverAllResultSerializer
 )
+import json
 
 @api_view(['POST'])
 def save_results(request):
@@ -77,16 +78,44 @@ def combined_results(request):
         ).order_by('-created_at')
 
         diary_results = []
+
         for folder in folders_with_scores:
-            entries = DiaryEntry.objects.filter(folder=folder).order_by('date')
-            for entry in entries:
+            folder_entries = DiaryEntry.objects.filter(folder=folder).order_by('date')
+
+            entries_list = []
+            folder_depression_total = 0
+            folder_anxiety_total = 0
+            folder_stress_total = 0
+            entry_count = 0
+
+            for entry in folder_entries:
                 if entry.depression_score is not None and entry.anxiety_score is not None and entry.stress_score is not None:
-                    diary_results.append({
-                        'timestamp': entry.date.strftime('%Y-%m-%d'),
+                    entries_list.append({
                         'depression': entry.depression_score,
                         'anxiety': entry.anxiety_score,
                         'stress': entry.stress_score,
                     })
+
+                    # Calculate cumulative
+                    folder_depression_total += entry.depression_score
+                    folder_anxiety_total += entry.anxiety_score
+                    folder_stress_total += entry.stress_score
+                    entry_count += 1
+
+            if entry_count > 0:
+                diary_results.append({
+                    'folder_name': folder.name,
+                    'folder_timestamp': folder.created_at.strftime('%Y-%m-%d'),  # assuming folder has created_at
+                    'folder_cumulative': {
+                        'depression': folder_depression_total,
+                        'anxiety': folder_anxiety_total,
+                        'stress': folder_stress_total,
+                    },
+                    'entries': entries_list
+                })
+
+        print(json.dumps(diary_results, indent=2))
+
         
     except Exception as e:
         return Response({'message': 'Error fetching data: ' + str(e)},
