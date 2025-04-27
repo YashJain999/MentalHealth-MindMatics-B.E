@@ -310,7 +310,6 @@ const FoldersPage = () => {
         try {
           const response = await api.get(`/api/diary/folders/${folderId}/das-scores/`);
           const dasScores = response.data;
-      
           navigate('/diary/report/${folderId}', {
             state: {
               scores: dasScores,
@@ -563,7 +562,7 @@ const FoldersPage = () => {
                                                                     onClick={() => handleGenerateReport(folder.id)}
                                                                     className="text-sm text-blue-600 hover:underline ml-2"
                                                                 >
-                                                                    📄 Generate Report
+                                                                    📄 View Report
                                                                 </button>
                                                             )}
                                                         <motion.button

@@ -98,7 +98,6 @@ def update_folder(request, pk):
         return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# views.py
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_das_scores_by_folder(request, pk):
@@ -123,7 +122,6 @@ def get_das_scores_by_folder(request, pk):
 
     except DiaryFolder.DoesNotExist:
         return Response({"error": "Folder not found."}, status=status.HTTP_404_NOT_FOUND)
-
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -258,14 +256,14 @@ def calculate_cumulative_das(request, pk):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check if the last entry's date has passed (i.e., it's the next day)
-        last_entry = entries.order_by("date").last()
-        today = datetime.now().date()
+        # # Check if the last entry's date has passed (i.e., it's the next day)
+        # last_entry = entries.order_by("date").last()
+        # today = datetime.now().date()
 
-        if last_entry.date >= today:
-            return Response({
-                "error": "Cumulative DAS can only be calculated after the last diary date has passed."
-            }, status=403)
+        # if last_entry.date >= today:
+        #     return Response({
+        #         "error": "Cumulative DAS can only be calculated after the last diary date has passed."
+        #     }, status=403)
 
         cumulative_depression = sum(entry.depression_score for entry in entries)
         cumulative_anxiety = sum(entry.anxiety_score for entry in entries)

@@ -331,7 +331,7 @@ const Diary = () => {
     const [showSavedNotification, setShowSavedNotification] = useState(false);
     const textareaRef = useRef(null);
     const [isLocked, setIsLocked] = useState(false);
-
+    const [folderHasCumulativeScore, setFolderHasCumulativeScore] = useState(false);
 
     const linesPerPage = 10;
 
@@ -448,10 +448,10 @@ const Diary = () => {
         console.log("Today:", today);
 
 
-        if (entryDate > today) {
-            alert("You can't edit future diary entries.");
-            return;
-        }
+        // if (entryDate > today) {
+        //     alert("You can't edit future diary entries.");
+        //     return;
+        // }
 
         try {
             setIsSaving(true);
@@ -487,13 +487,27 @@ const Diary = () => {
                 const response = await api.get(`/api/diary/folders/${folderId}/`);
                 setDiaryName(response.data.name);
 
-                // Lock if any cumulative score exists
-                if (
+                //     // Lock if any cumulative score exists
+                //     if (
+                //         response.data.cumulative_depression_score !== null ||
+                //         response.data.cumulative_anxiety_score !== null ||
+                //         response.data.cumulative_stress_score !== null
+                //     ) {
+                //         setIsLocked(true);
+                //     }
+                // } catch (error) {
+                //     console.error("Error fetching folder details:", error);
+                // }
+                const hasCumulativeScore =
                     response.data.cumulative_depression_score !== null ||
                     response.data.cumulative_anxiety_score !== null ||
-                    response.data.cumulative_stress_score !== null
-                ) {
+                    response.data.cumulative_stress_score !== null;
+
+                if (hasCumulativeScore) {
                     setIsLocked(true);
+                    setFolderHasCumulativeScore(true); // ✅ ADD THIS
+                } else {
+                    setFolderHasCumulativeScore(false); // ✅ In case no score
                 }
             } catch (error) {
                 console.error("Error fetching folder details:", error);
@@ -520,11 +534,35 @@ const Diary = () => {
 
     const calculateCumulativeDAS = async (folderId) => {
         try {
-            await api.post(`/api/diary/folders/${folderId}/calculate-cumulative/`);
+            // Show loading state or change button text to 'Calculating'
+            setFolderHasCumulativeScore(false); // Set a loading state or change button text to "Calculating"
+
+            // First, initiate both the calculation and fetching DAS scores concurrently
+            const calculatePromise = api.post(`/api/diary/folders/${folderId}/calculate-cumulative/`);
+            const fetchDASPromise = api.get(`/api/diary/folders/${folderId}/das-scores/`);
+
+            // Wait for both requests to complete
+            const [calculateResponse, dasScoresResponse] = await Promise.all([calculatePromise, fetchDASPromise]);
+
+            // Simulate a delay before showing the button (e.g., 2 seconds)
+            setTimeout(() => {
+                // Update UI based on the responses
+                setFolderHasCumulativeScore(true); // Update button text to "Report Generated"
+
+                // Navigate to the report page with the fetched DAS scores
+                navigate(`/diary/report/${folderId}`, {
+                    state: {
+                        scores: dasScoresResponse.data, // DAS scores data
+                    },
+                });
+            }, 2000); // Delay for 2 seconds (adjust as needed)
+
         } catch (error) {
-            console.error("Error calculating cumulative DAS scores:", error);
+            console.error("Error calculating cumulative DAS scores or fetching DAS scores:", error);
         }
     };
+
+
 
     const handleContentChange = (e) => {
         setEntryContent(e.target.value);
@@ -576,6 +614,9 @@ const Diary = () => {
             transition: { duration: 0.3, ease: "easeOut" }
         }
     };
+
+    const allEntriesFilled = entries.every(entry => entry.content.trim() !== "");
+
     return (
         <MotionConfig transition={{ duration: 0.4 }}>
             <div className="h-screen w-screen bg-cover bg-center relative overflow-hidden"
@@ -714,8 +755,8 @@ const Diary = () => {
                             <textarea
                                 ref={textareaRef}
                                 className={`w-full h-full resize-none font-serif text-xl outline-none ${isLocked
-                                        ? "bg-gray-50 cursor-not-allowed text-gray-600"
-                                        : "bg-transparent text-amber-900"
+                                    ? "bg-gray-50 cursor-not-allowed text-gray-600"
+                                    : "bg-transparent text-amber-900"
                                     }`}
                                 disabled={isLocked}
                                 value={pages[currentPage]}
@@ -787,62 +828,80 @@ const Diary = () => {
                 </motion.div>
 
                 {/* Action Buttons at Bottom with animations */}
-                <div className="absolute bottom-4 w-full flex justify-between px-16">
-                    <motion.button
-                        className="px-5 py-2 bg-amber-800 text-white rounded-md flex items-center font-serif shadow-md"
-                        onClick={() => navigate("/diary/folders")}
-                        variants={buttonHoverVariants}
-                        whileHover="hover"
-                        whileTap="tap"
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 1, duration: 0.5 }}
-                    >
-                        <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
-                        Back to Folders
-                    </motion.button>
+                <div className="absolute bottom-4 w-full px-16">
+                    {/* Three-column grid */}
+                    <div className="grid grid-cols-3 items-center">
 
-                    <motion.button
-                        className={`px-6 py-2 text-white rounded-md font-serif shadow-md flex items-center transition duration-300 ${isLocked ? "bg-gray-400 cursor-not-allowed" : "bg-amber-600 hover:bg-amber-700"
-                            }`}
-                        onClick={handleSave}
-                        disabled={isSaving || isLocked}
-                        variants={buttonHoverVariants}
-                        whileHover={!isLocked ? "hover" : ""}
-                        whileTap={!isLocked ? "tap" : ""}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 1, duration: 0.5 }}
-                    >
-                        {isSaving ? (
-                            <span>Saving...</span>
-                        ) : isLocked ? (
-                            <>
-                                <FontAwesomeIcon icon={faSave} className="mr-2" />
-                                Editing Locked
-                            </>
-                        ) : (
-                            <>
-                                <FontAwesomeIcon icon={faSave} className="mr-2" />
-                                Save Entry
-                            </>
-                        )}
-                    </motion.button>
+                        {/* Left column - Back button */}
+                        <div className="flex justify-start">
+                            <motion.button
+                                className="px-5 py-2 bg-amber-800 text-white rounded-md flex items-center font-serif shadow-md"
+                                onClick={() => navigate("/diary/folders")}
+                                variants={buttonHoverVariants}
+                                whileHover="hover"
+                                whileTap="tap"
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 1, duration: 0.5 }}
+                            >
+                                <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
+                                Back to Folders
+                            </motion.button>
+                        </div>
 
-                    <RouterLink to="/diaryreport" >
-                        <motion.button
-                            className="px-6 py-2 bg-amber-600 text-white rounded-md font-serif shadow-md flex items-center"
-                            variants={buttonHoverVariants}
-                            whileHover="hover"
-                            whileTap="tap"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 1, duration: 0.5 }}
-                        >
-                            <FontAwesomeIcon icon={faSave} className="mr-2" />
-                            Generate Report
-                        </motion.button>
-                    </RouterLink>
+                        {/* Center column - Save Entry button */}
+                        <div className="flex justify-center">
+                            <motion.button
+                                className={`px-6 py-2 text-white rounded-md font-serif shadow-md flex items-center transition duration-300 ${isLocked ? "bg-gray-400 cursor-not-allowed" : "bg-amber-600 hover:bg-amber-700"}`}
+                                onClick={handleSave}
+                                disabled={isSaving || isLocked}
+                                variants={buttonHoverVariants}
+                                whileHover={!isLocked ? "hover" : ""}
+                                whileTap={!isLocked ? "tap" : ""}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 1, duration: 0.5 }}
+                            >
+                                {isSaving ? (
+                                    <span>Saving...</span>
+                                ) : isLocked ? (
+                                    <>
+                                        <FontAwesomeIcon icon={faSave} className="mr-2" />
+                                        Editing Locked
+                                    </>
+                                ) : (
+                                    <>
+                                        <FontAwesomeIcon icon={faSave} className="mr-2" />
+                                        Save Entry
+                                    </>
+                                )}
+                            </motion.button>
+                        </div>
+
+                        {/* Right column - Generate Report button */}
+                        <div className="flex justify-end">
+                            {allEntriesFilled && (
+                                <motion.button
+                                    onClick={() => {
+                                        if (!folderHasCumulativeScore) {
+                                            calculateCumulativeDAS(folderId);
+                                        }
+                                    }}
+                                    className={`px-6 py-2 text-white rounded-md font-serif shadow-md flex items-center ${folderHasCumulativeScore ? "bg-gray-400 cursor-not-allowed" : "bg-amber-600 hover:bg-amber-700"}`}
+                                    variants={buttonHoverVariants}
+                                    whileHover="hover"
+                                    whileTap="tap"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: 1, duration: 0.5 }}
+                                    disabled={folderHasCumulativeScore}
+                                >
+                                    <FontAwesomeIcon icon={faSave} className="mr-2" />
+                                    {folderHasCumulativeScore ? "Report Generated" : "Generate Report"}
+                                </motion.button>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Save confirmation notification */}
