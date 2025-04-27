@@ -2,30 +2,30 @@ import axios from "axios";
 import { ACCESS_TOKEN } from "./constants";
 
 const api = axios.create({
-    baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000', // Ensure this points to your Django backend
+    baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000/', // Ensure this points to your Django backend
   })
-
-api.interceptors.request.use(
+  api.interceptors.request.use(
     (config) => {
+      const openPaths = ['/api/token/','/api/user/register/','/api/token/','/api-auth/']; // List open routes here
+      // If the request URL is NOT an open path, add Authorization header
+      if (!openPaths.includes(config.url)) {
         const token = localStorage.getItem(ACCESS_TOKEN);
         if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+          config.headers.Authorization = `Bearer ${token}`;
         }
-        return config;
+      }
+      return config;
     },
     (error) => {
-        return Promise.reject(error);
+      return Promise.reject(error);
     }
-);
-
+  );
 // Function to fetch user details
 export const fetchUserDetails = async () => {
     const token = localStorage.getItem(ACCESS_TOKEN);
-    
     if (!token) {
         throw new Error('No token found');
     }
-  
     try {
         const response = await api.get('/api/user/details/', { // Using the api instance
             headers: {

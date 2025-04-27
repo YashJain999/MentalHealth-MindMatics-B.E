@@ -20,8 +20,8 @@ const VideoGraphs = ({ results, email, fromComponent }) => {
   const navigate = useNavigate();
 
   // Extract final scores, video prediction, and text predictions from the results
-  const average_emotion = results && results.average_confidence_scores
-  ? Object.entries(results.average_confidence_scores).map(([label, score]) => ({
+  const average_emotion = results && results.emotion_count_scores
+  ? Object.entries(results.emotion_count_scores).map(([label, score]) => ({
       label,
       score
     }))
@@ -307,7 +307,7 @@ const VideoGraphs = ({ results, email, fromComponent }) => {
       >
         <div className="h-2 bg-gradient-to-r from-teal-400 to-emerald-600"></div>
         <div className="p-6">
-          <h2 className="text-2xl font-semibold mb-6 text-gray-800">Average Emotion</h2>
+          <h2 className="text-2xl font-semibold mb-6 text-gray-800">Emotions Captured</h2>
           <div className="h-64 md:h-80">
             {average_emotion.length > 0 ? (
               <Bar data={averageEmotionChartData} options={chartOptions} />

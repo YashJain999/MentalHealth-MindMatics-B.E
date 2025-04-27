@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { media } from '../components/mediaData';
-import { motion, AnimatePresence } from 'framer-motion';
-import { getRandomizedQuestions } from '../components/getRandomizedQuestions';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
+import { media } from "../components/mediaData";
+import { motion, AnimatePresence } from "framer-motion";
+import { getRandomizedQuestions } from "../components/getRandomizedQuestions";
 import api from "../api";
 import { ACCESS_TOKEN } from "../constants";
 import { FaMicrophone, FaMicrophoneSlash } from "react-icons/fa";
 import VideoGraphs from "../components/VideoGraphs";
 import Loading from "../components/Loading";
-import SessionTimeout from "../components/SessionTimeout"; 
+import SessionTimeout from "../components/SessionTimeout";
 // Constants
 const DURATION = 5; // seconds per slide
 const fadeVariant = {
@@ -35,7 +35,8 @@ const useSpeechToText = ({ currentIndex, setResponses }) => {
   useEffect(() => {
     // Initialize speech recognition only once
     if (!recognitionRef.current) {
-      recognitionRef.current = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognitionRef.current = new (window.SpeechRecognition ||
+        window.webkitSpeechRecognition)();
       recognitionRef.current.lang = "en-US";
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
@@ -115,25 +116,29 @@ const useVideoRecording = () => {
         console.log("Already recording, not starting again");
         return;
       }
-      
+
       // Clean up any existing streams first
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
-      
+
       // Reset recorded chunks
       recordedChunksRef.current = [];
-      
+
       console.log("Requesting media stream...");
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: {
+          width: { ideal: 640 }, // You can also try 1280
+          height: { ideal: 480 },
+          frameRate: { ideal: 20 }, // lower frame rate to 15 fps
+        },
         audio: true,
       });
-      
+
       console.log("Media stream obtained:", !!stream);
       streamRef.current = stream;
-      
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         console.log("Video element updated with stream");
@@ -141,9 +146,10 @@ const useVideoRecording = () => {
 
       // Create new media recorder
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9,opus'
+        mimeType: "video/webm;codecs=vp8,opus",
+        videoBitsPerSecond: 500_000, // 500 kbps instead of default (much higher)
       });
-      
+
       console.log("Media recorder created:", !!mediaRecorder);
       mediaRecorderRef.current = mediaRecorder;
 
@@ -154,122 +160,133 @@ const useVideoRecording = () => {
           recordedChunksRef.current.push(event.data);
         }
       };
-   // Setup stop handler
-   mediaRecorder.onstop = () => {
-    console.log(`Recording stopped. Chunks collected: ${recordedChunksRef.current.length}`);
-    
-    if (recordedChunksRef.current.length > 0) {
-      const blob = new Blob(recordedChunksRef.current, { 
-        type: 'video/webm' 
-      });
-      console.log("Blob created:", blob.size);
-      setVideoBlob(blob);
-    } else {
-      console.error("No data chunks collected during recording");
+      // Setup stop handler
+      mediaRecorder.onstop = () => {
+        console.log(
+          `Recording stopped. Chunks collected: ${recordedChunksRef.current.length}`
+        );
+
+        if (recordedChunksRef.current.length > 0) {
+          const blob = new Blob(recordedChunksRef.current, {
+            type: "video/webm",
+          });
+          console.log("Blob created:", blob.size);
+          setVideoBlob(blob);
+        } else {
+          console.error("No data chunks collected during recording");
+        }
+      };
+
+      // Start recording with 1 second timeslices to ensure data is collected
+      console.log("Starting media recorder...");
+      mediaRecorder.start(1000);
+      setIsRecording(true);
+      console.log("Recording started successfully");
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      alert(`Error accessing camera/microphone: ${error.message}`);
     }
-  };
+  }, [isRecording]);
 
-  // Start recording with 1 second timeslices to ensure data is collected
-  console.log("Starting media recorder...");
-  mediaRecorder.start(1000);
-  setIsRecording(true);
-  console.log("Recording started successfully");
-} catch (error) {
-  console.error("Error starting recording:", error);
-  alert(`Error accessing camera/microphone: ${error.message}`);
-}
-}, [isRecording]);
+  const stopRecording = useCallback(() => {
+    console.log("Stopping recording attempt...");
+    if (!isRecording) {
+      console.log("Not recording, nothing to stop");
+      return;
+    }
 
-const stopRecording = useCallback(() => {
-  console.log("Stopping recording attempt...");
-  if (!isRecording) {
-    console.log("Not recording, nothing to stop");
-    return;
-  }
+    try {
+      // Request a final dataavailable event
+      if (mediaRecorderRef.current) {
+        console.log(
+          "Media recorder state before stop:",
+          mediaRecorderRef.current.state
+        );
 
-  try {
-    // Request a final dataavailable event
-    if (mediaRecorderRef.current) {
-      console.log("Media recorder state before stop:", mediaRecorderRef.current.state);
-      
-      // Only stop if it's recording
-      if (mediaRecorderRef.current.state === 'recording') {
-        // Request additional data
-        mediaRecorderRef.current.requestData();
-        
-        // Stop the recorder
-        mediaRecorderRef.current.stop();
-        console.log("Media recorder stopped");
+        // Only stop if it's recording
+        if (mediaRecorderRef.current.state === "recording") {
+          // Request additional data
+          mediaRecorderRef.current.requestData();
+
+          // Stop the recorder
+          mediaRecorderRef.current.stop();
+          console.log("Media recorder stopped");
+        } else {
+          console.warn(
+            "Media recorder not in recording state:",
+            mediaRecorderRef.current.state
+          );
+        }
       } else {
-        console.warn("Media recorder not in recording state:", mediaRecorderRef.current.state);
+        console.warn("No media recorder reference to stop");
       }
-    } else {
-      console.warn("No media recorder reference to stop");
+
+      // Stop all tracks
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => {
+          track.stop();
+          console.log(`Track ${track.kind} stopped`);
+        });
+        streamRef.current = null;
+      }
+
+      // Create blob from chunks if we have any
+      if (recordedChunksRef.current.length > 0) {
+        const blob = new Blob(recordedChunksRef.current, {
+          type: "video/webm",
+        });
+        console.log("Blob created in stopRecording:", blob.size);
+        setVideoBlob(blob);
+      } else {
+        console.error("No recorded chunks available to create blob");
+      }
+
+      setIsRecording(false);
+    } catch (error) {
+      console.error("Error stopping recording:", error);
     }
-    
-    // Stop all tracks
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => {
-        track.stop();
-        console.log(`Track ${track.kind} stopped`);
-      });
-      streamRef.current = null;
-    }
-    
-    // Create blob from chunks if we have any
+  }, [isRecording]);
+
+  // Force blob creation
+  const getRecordingBlob = useCallback(() => {
+    console.log("Manually creating blob from chunks...");
     if (recordedChunksRef.current.length > 0) {
-      const blob = new Blob(recordedChunksRef.current, { 
-        type: 'video/webm' 
+      const blob = new Blob(recordedChunksRef.current, {
+        type: "video/webm",
       });
-      console.log("Blob created in stopRecording:", blob.size);
+      console.log("Manual blob creation:", blob.size);
       setVideoBlob(blob);
-    } else {
-      console.error("No recorded chunks available to create blob");
+      return blob;
     }
-    
-    setIsRecording(false);
-  } catch (error) {
-    console.error("Error stopping recording:", error);
-  }
-}, [isRecording]);
+    return null;
+  }, []);
 
-// Force blob creation
-const getRecordingBlob = useCallback(() => {
-  console.log("Manually creating blob from chunks...");
-  if (recordedChunksRef.current.length > 0) {
-    const blob = new Blob(recordedChunksRef.current, { 
-      type: 'video/webm' 
-    });
-    console.log("Manual blob creation:", blob.size);
-    setVideoBlob(blob);
-    return blob;
-  }
-  return null;
-}, []);
+  // Cleanup function
+  useEffect(() => {
+    return () => {
+      console.log("Cleanup: stopping recording if active");
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state === "recording"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
 
-// Cleanup function
-useEffect(() => {
-  return () => {
-    console.log("Cleanup: stopping recording if active");
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-    }
-    
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-    }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  return {
+    isRecording,
+    videoBlob,
+    videoRef,
+    startRecording,
+    stopRecording,
+    getRecordingBlob,
+    streamRef,
   };
-}, []);
-
-return { 
-  isRecording, 
-  videoBlob, 
-  videoRef, 
-  startRecording, 
-  stopRecording,
-  getRecordingBlob,
-  streamRef
-};
 };
 
 // Welcome screen component
@@ -280,17 +297,14 @@ const WelcomeScreen = ({ onStart }) => (
     variants={fadeVariant}
     className="text-center space-y-6"
   >
-    <motion.h2 
+    <motion.h2
       className="text-3xl font-bold text-gray-800 mb-8 text-center"
       animate={{ scale: [1, 1.05, 1], opacity: [0.9, 1, 0.9] }}
       transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
     >
       Do you want to start to feel the experiences?
     </motion.h2>
-    <motion.div 
-      className="flex justify-center"
-      whileHover={{ scale: 1.05 }}
-    >
+    <motion.div className="flex justify-center" whileHover={{ scale: 1.05 }}>
       <motion.button
         onClick={onStart}
         className="px-8 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-xl transition focus:outline-none focus:ring-2 focus:ring-blue-300 mb-12"
@@ -307,41 +321,43 @@ const WelcomeScreen = ({ onStart }) => (
 
 // Instructions component
 const Instructions = () => (
-  <motion.div 
+  <motion.div
     className="mb-12 flex flex-col justify-center items-center text-white"
     initial={{ opacity: 0, y: 30 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.7, delay: 0.2 }}
   >
     <motion.div className="text-center mb-12">
-      <motion.p 
+      <motion.p
         className="text-xl text-gray-800"
-        animate={{ 
-          textShadow: ["0px 0px 0px rgba(0,0,0,0)", "0px 0px 5px rgba(72,187,120,0.5)", "0px 0px 0px rgba(0,0,0,0)"]
+        animate={{
+          textShadow: [
+            "0px 0px 0px rgba(0,0,0,0)",
+            "0px 0px 5px rgba(72,187,120,0.5)",
+            "0px 0px 0px rgba(0,0,0,0)",
+          ],
         }}
         transition={{ duration: 3, repeat: Infinity }}
       >
         For Better{" "}
-        <span className="text-green-600 font-semibold">
-          Experience
-        </span>
-        , please make sure that:
+        <span className="text-green-600 font-semibold">Experience</span>, please
+        make sure that:
       </motion.p>
     </motion.div>
 
     <div className="flex flex-col md:flex-row gap-6 flex-wrap justify-center">
       {/* Box 1 */}
-      <motion.div 
+      <motion.div
         className="bg-white bg-opacity-30 backdrop-blur-md border border-purple-400 rounded-lg p-6 w-64 text-center hover:scale-105 transition-transform duration-300"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
-        whileHover={{ 
+        whileHover={{
           boxShadow: "0px 10px 20px rgba(120, 58, 180, 0.3)",
-          borderColor: "#a78bfa"
+          borderColor: "#a78bfa",
         }}
       >
-        <motion.div 
+        <motion.div
           className="mb-4"
           animate={{ rotate: [0, 5, -5, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -374,17 +390,17 @@ const Instructions = () => (
       </motion.div>
 
       {/* Box 2 */}
-      <motion.div 
+      <motion.div
         className="bg-white bg-opacity-30 backdrop-blur-md border border-purple-400 rounded-lg p-6 w-64 text-center hover:scale-105 transition-transform duration-300"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}
-        whileHover={{ 
+        whileHover={{
           boxShadow: "0px 10px 20px rgba(120, 58, 180, 0.3)",
-          borderColor: "#a78bfa"
+          borderColor: "#a78bfa",
         }}
       >
-        <motion.div 
+        <motion.div
           className="mb-4"
           animate={{ rotate: [0, 5, -5, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -404,23 +420,23 @@ const Instructions = () => (
           </svg>
         </motion.div>
         <p className="text-gray-800">
-          You are{" "}
-          <span className="text-green-600 font-semibold">facing</span> the camera
+          You are <span className="text-green-600 font-semibold">facing</span>{" "}
+          the camera
         </p>
       </motion.div>
 
       {/* Box 3 */}
-      <motion.div 
+      <motion.div
         className="bg-white bg-opacity-30 backdrop-blur-md border border-purple-400 rounded-lg p-6 w-64 text-center hover:scale-105 transition-transform duration-300"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.7 }}
-        whileHover={{ 
+        whileHover={{
           boxShadow: "0px 10px 20px rgba(120, 58, 180, 0.3)",
-          borderColor: "#a78bfa"
+          borderColor: "#a78bfa",
         }}
       >
-        <motion.div 
+        <motion.div
           className="mb-4"
           animate={{ rotate: [0, 5, -5, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -444,19 +460,19 @@ const Instructions = () => (
           <span className="text-green-600 font-semibold">well-lit room</span>
         </p>
       </motion.div>
-      
+
       {/* Box 4 */}
-      <motion.div 
+      <motion.div
         className="bg-white bg-opacity-30 backdrop-blur-md border border-purple-400 rounded-lg p-6 w-64 text-center hover:scale-105 transition-transform duration-300"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.9 }}
-        whileHover={{ 
+        whileHover={{
           boxShadow: "0px 10px 20px rgba(120, 58, 180, 0.3)",
-          borderColor: "#a78bfa"
+          borderColor: "#a78bfa",
         }}
       >
-        <motion.div 
+        <motion.div
           className="mb-4"
           animate={{ rotate: [0, 5, -5, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -476,23 +492,23 @@ const Instructions = () => (
           </svg>
         </motion.div>
         <p className="text-gray-800">
-          Be {" "}
-          <span className="text-green-600 font-semibold">Genuine</span> {" "} to yourself
+          Be <span className="text-green-600 font-semibold">Genuine</span> to
+          yourself
         </p>
       </motion.div>
-      
+
       {/* Box 5 */}
-      <motion.div 
+      <motion.div
         className="bg-white bg-opacity-30 backdrop-blur-md border border-purple-400 rounded-lg p-6 w-64 text-center hover:scale-105 transition-transform duration-300"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 1.1 }}
-        whileHover={{ 
+        whileHover={{
           boxShadow: "0px 10px 20px rgba(120, 58, 180, 0.3)",
-          borderColor: "#a78bfa"
+          borderColor: "#a78bfa",
         }}
       >
-        <motion.div 
+        <motion.div
           className="mb-4"
           animate={{ rotate: [0, 5, -5, 0] }}
           transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
@@ -517,14 +533,14 @@ const Instructions = () => (
           </svg>
         </motion.div>
         <p className="text-gray-800">
-          Images and Videos used {" "}
-          <span className="text-green-600 font-semibold">are not for</span> {" "} harming your feeling
+          Images and Videos used{" "}
+          <span className="text-green-600 font-semibold">are not for</span>{" "}
+          harming your feeling
         </p>
       </motion.div>
     </div>
   </motion.div>
 );
-
 
 // Main component
 const ExperienceFlow = () => {
@@ -540,23 +556,22 @@ const ExperienceFlow = () => {
   const [message, setMessage] = useState(null);
   const [testCompleted, setTestCompleted] = useState(false);
   const [showSessionTimeout, setShowSessionTimeout] = useState(false);
-        const [searchParams] = useSearchParams();
-  const email = searchParams.get('email');
-  const fromComponent = searchParams.get('fromComponent');
-    const [isLoading, setIsLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const email = searchParams.get("email");
+  const fromComponent = searchParams.get("fromComponent");
+  const [isLoading, setIsLoading] = useState(false);
 
-
-  const { isListening, startListening, stopListening } = useSpeechToText({ 
-    currentIndex, 
-    responses, 
-    setResponses 
+  const { isListening, startListening, stopListening } = useSpeechToText({
+    currentIndex,
+    responses,
+    setResponses,
   });
-  
-  const { 
-    isRecording, 
-    videoBlob, 
-    videoRef, 
-    startRecording, 
+
+  const {
+    isRecording,
+    videoBlob,
+    videoRef,
+    startRecording,
     stopRecording,
     getRecordingBlob,
     streamRef,
@@ -573,17 +588,16 @@ const ExperienceFlow = () => {
     setMessage(null);
     setResults(null);
 
-    if(!responses){
+    if (!responses) {
       alert(responses);
       return;
     }
     setIsLoading(true); // Set loading to true when submitting
 
-
     const formData = new FormData();
     formData.append("video", videoBlob, "video.webm");
     formData.append("responses", JSON.stringify(responses));
-    formData.append('email', email);
+    formData.append("email", email);
 
     try {
       const response = await api.post("/video/predict_emotion/", formData, {
@@ -596,108 +610,120 @@ const ExperienceFlow = () => {
       setMessage({ type: "success", text: "Prediction successful!" });
     } catch (error) {
       console.error("Prediction error:", error);
-      
+
       // Check for specific error statuses
       if (error.response?.status === 401) {
         setShowSessionTimeout(true);
-        setMessage({ type: "error", text: "Your session has expired. Please log in again." });
+        setMessage({
+          type: "error",
+          text: "Your session has expired. Please log in again.",
+        });
       } else if (error.response?.status === 500) {
-        alert("There is a problem with the internal server. Please try again later or contact support.");
-        setMessage({ type: "error", text: "Internal server error. Please try again later." });
+        alert(
+          "There is a problem with the internal server. Please try again later or contact support."
+        );
+        setMessage({
+          type: "error",
+          text: "Internal server error. Please try again later.",
+        });
       } else {
         setMessage({ type: "error", text: "Something went wrong!" });
       }
-      
+
       setIsLoading(false); // Reset loading state on error
     } finally {
       setLoading(false);
     }
   }, []);
 
-// Updated handleStart function
-const handleStart = useCallback(() => {
-  console.log("Starting experience flow...");
-  const randomizedQuestions = getRandomizedQuestions(media);
-  setUserType('user');
-  setMediaList(randomizedQuestions);
-  setStarted(true);
-  setCurrentIndex(0);
-  setShowQuestion(false);
-  
-  // Set timeout to ensure UI is rendered before starting camera
-  setTimeout(() => {
-    console.log("Initializing video recording...");
-    startRecording();
-  }, 500);
-}, [startRecording]);
-  
-  
+  // Updated handleStart function
+  const handleStart = useCallback(() => {
+    console.log("Starting experience flow...");
+    const randomizedQuestions = getRandomizedQuestions(media);
+    setUserType("user");
+    setMediaList(randomizedQuestions);
+    setStarted(true);
+    setCurrentIndex(0);
+    setShowQuestion(false);
+
+    // Set timeout to ensure UI is rendered before starting camera
+    setTimeout(() => {
+      console.log("Initializing video recording...");
+      startRecording();
+    }, 500);
+  }, [startRecording]);
+
   // Only stop recording at the end
   const handleEnd = useCallback(() => {
-    console.log('Ending experience. User Responses:', responses);
-    
+    console.log("Ending experience. User Responses:", responses);
+  
     if (isListening) {
       stopListening();
     }
-    
+  
     setStarted(false);
-  setTestCompleted(true);
+    setTestCompleted(true);
   
-  // First stop the recording
-  console.log("Stopping recording at experience end");
-  stopRecording();
+    console.log("Stopping recording at experience end");
+    stopRecording();
   
-    // Give more time for the blob to be created
-  console.log("Waiting for blob creation...");
-  setTimeout(() => {
-    // Try to get the blob directly if it's not set yet
-    let currentBlob = videoBlob;
+    console.log("Waiting for blob creation...");
     
-    console.log("Current blob status:", !!currentBlob);
-    
-    if (!currentBlob && typeof getRecordingBlob === 'function') {
-      console.log("Attempting to manually get recording blob");
-      currentBlob = getRecordingBlob();
-    }
-    
-    if (currentBlob) {
-      console.log("Blob available, submitting prediction");
-      handlePredict(currentBlob, responses);
-    } else {
-      console.error("Missing video blob:", { responses });
-      setMessage({ type: "error", text: "Failed to capture video recording. Please try again." });
-      setLoading(false);
-      setIsLoading(false);
-    }
-  }, 2000); // Wait even longer - 2 seconds
-}, [isListening, stopListening, stopRecording, videoBlob, responses, handlePredict, getRecordingBlob]);
+    const checkBlobInterval = setInterval(() => {
+      let currentBlob = videoBlob;
   
+      console.log("Current blob status:", !!currentBlob);
+  
+      if (!currentBlob && typeof getRecordingBlob === "function") {
+        console.log("Attempting to manually get recording blob");
+        currentBlob = getRecordingBlob();
+      }
+  
+      if (currentBlob) {
+        console.log("Blob available, submitting prediction");
+        clearInterval(checkBlobInterval); // Stop checking once blob is ready
+        handlePredict(currentBlob, responses);
+      }
+    }, 200); // Check every 200ms (much faster)
+  }, [
+    isListening,
+    stopListening,
+    stopRecording,
+    videoBlob,
+    responses,
+    handlePredict,
+    getRecordingBlob,
+  ]);
+  
+
   // Remove startRecording from this useEffect
   useEffect(() => {
     let timer;
     let progressTimer;
-  
+
     if (started && currentIndex < mediaList.length) {
       setShowQuestion(false);
       setProgress(0);
       // NO startRecording() call here - this happens only once at the beginning
-  
+
       progressTimer = setInterval(() => {
-        setProgress((prev) => (prev < 100 ? prev + 100 / (DURATION * 10) : 100));
+        setProgress((prev) =>
+          prev < 100 ? prev + 100 / (DURATION * 10) : 100
+        );
       }, 100);
-  
+
       timer = setTimeout(() => {
         clearInterval(progressTimer);
         setShowQuestion(true);
       }, DURATION * 1000);
     }
-  
+
     return () => {
       clearTimeout(timer);
       clearInterval(progressTimer);
     };
   }, [started, currentIndex, mediaList.length]);
-  
+
   // Add a cleanup effect for when the component unmounts
   useEffect(() => {
     return () => {
@@ -707,7 +733,7 @@ const handleStart = useCallback(() => {
       }
     };
   }, [isRecording, stopRecording]);
-    
+
   useEffect(() => {
     // If we have a stream but the video element doesn't have it as source
     if (streamRef.current && videoRef.current && !videoRef.current.srcObject) {
@@ -716,71 +742,87 @@ const handleStart = useCallback(() => {
     }
   }, [currentIndex]); // Re-run when the question index changes
 
-
- // Handle next question without affecting recording
- const handleNext = useCallback(() => {
-  if (!responses[currentIndex] || responses[currentIndex].trim() === '' || isListening===true) {
-    alert('Please enter a response before proceeding or turn off the mic!');
-    return;
-  }
-
-  if (isListening) {
-    stopListening();
-  }
-
-  if (currentIndex < mediaList.length - 1) {
-    setCurrentIndex(currentIndex + 1);
-    setShowQuestion(false);
-  } else {
-    handleEnd();
-  }
-}, [currentIndex, mediaList.length, responses, isListening, stopListening, handleEnd]);
-    // If results exist, render the Graphs component instead of the recording UI.
-    if (results) {
-      return <VideoGraphs results={results}  email={email} fromComponent={fromComponent}/>;
+  // Handle next question without affecting recording
+  const handleNext = useCallback(() => {
+    if (
+      !responses[currentIndex] ||
+      responses[currentIndex].trim() === "" ||
+      isListening === true
+    ) {
+      alert("Please enter a response before proceeding or turn off the mic!");
+      return;
     }
-            // Add this right after the above if statement
-if (isLoading) {
-  return <Loading />;
-}
+
+    if (isListening) {
+      stopListening();
+    }
+
+    if (currentIndex < mediaList.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setShowQuestion(false);
+    } else {
+      handleEnd();
+    }
+  }, [
+    currentIndex,
+    mediaList.length,
+    responses,
+    isListening,
+    stopListening,
+    handleEnd,
+  ]);
+  // If results exist, render the Graphs component instead of the recording UI.
+  if (results) {
+    return (
+      <VideoGraphs
+        results={results}
+        email={email}
+        fromComponent={fromComponent}
+      />
+    );
+  }
+  // Add this right after the above if statement
+  if (isLoading) {
+    return <Loading />;
+  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-r from-purple-300 via-indigo-200 to-blue-300 p-4 overflow-hidden">
       {/* Animated background elements */}
-      <motion.div 
+      <motion.div
         className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10"
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.6 }}
         transition={{ duration: 1.5 }}
       >
-        <motion.div 
+        <motion.div
           className="absolute top-20 left-20 w-32 h-32 rounded-full bg-pink-300 filter blur-xl"
-          animate={{ 
+          animate={{
             x: [0, 100, 0],
-            y: [0, 50, 0]
+            y: [0, 50, 0],
           }}
           transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
         />
-        <motion.div 
+        <motion.div
           className="absolute bottom-20 right-20 w-40 h-40 rounded-full bg-blue-300 filter blur-xl"
-          animate={{ 
+          animate={{
             x: [0, -80, 0],
-            y: [0, 40, 0]
+            y: [0, 40, 0],
           }}
           transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
         />
-        <motion.div 
+        <motion.div
           className="absolute top-1/2 left-1/2 w-48 h-48 rounded-full bg-purple-200 filter blur-xl"
-          animate={{ 
+          animate={{
             x: [0, -40, 0],
-            y: [0, -60, 0]
+            y: [0, -60, 0],
           }}
           transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
         />
       </motion.div>
 
-            {/* Welcome Screen */}
-            {!userType && !started && (
+      {/* Welcome Screen */}
+      {!userType && !started && (
         <>
           <WelcomeScreen onStart={handleStart} />
           <Instructions />
@@ -877,48 +919,46 @@ if (isLoading) {
                   }
                   required
                 />
-                {/* Microphone Button */}
-                {/* Sound wave animation */}
-   
+                {/* Sound wave animation AND MICROPHONE BUTTON */}
                 <button
-  type="button"
-  onClick={isListening ? stopListening : startListening}
-  className="absolute top-2 right-2 p-3 rounded-full shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50"
-  style={{
-    background: isListening 
-      ? 'linear-gradient(to right, #3b82f6, #2563eb)' 
-      : 'linear-gradient(to right, #6b7280, #4b5563)'
-  }}
->
-  {isListening ? (
-    <div className="relative w-5 h-5">
-      {/* Animated circles */}
-      <div className="absolute inset-0 rounded-full bg-blue-200 opacity-20 animate-ping"></div>
-      <div className="absolute -inset-1 rounded-full border-2 border-white opacity-30 animate-pulse"></div>
-      
-      {/* Microphone icon */}
-      <FaMicrophoneSlash size={20} className="relative text-white" />
-    </div>
-  ) : (
-    <div className="relative w-5 h-5">
-      <FaMicrophone size={20} className="text-white transform transition-transform hover:scale-110" />
-    </div>
-  )}
-</button>
+                  type="button"
+                  onClick={isListening ? stopListening : startListening}
+                  className="absolute top-2 right-2 p-3 rounded-full shadow-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50"
+                  style={{
+                    background: isListening
+                      ? "linear-gradient(to right, #3b82f6, #2563eb)"
+                      : "linear-gradient(to right, #6b7280, #4b5563)",
+                  }}
+                >
+                  {isListening ? (
+                    <div className="relative w-5 h-5">
+                      {/* Animated circles */}
+                      <div className="absolute inset-0 rounded-full bg-blue-200 opacity-20 animate-ping"></div>
+                      <div className="absolute -inset-1 rounded-full border-2 border-white opacity-30 animate-pulse"></div>
+
+                      {/* Microphone icon */}
+                      <FaMicrophoneSlash
+                        size={20}
+                        className="relative text-white"
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative w-5 h-5">
+                      <FaMicrophone
+                        size={20}
+                        className="text-white transform transition-transform hover:scale-110"
+                      />
+                    </div>
+                  )}
+                </button>
               </div>
 
-              <div className="flex justify-between mt-4">
+              <div className="flex justify-end">
                 <button
                   onClick={handleNext}
-                  className="px-6 py-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition focus:ring-2 focus:ring-indigo-300"
-                >
-                  {currentIndex === mediaList.length - 1 ? "Finish" : "Next"}
-                </button>
-                <button
-                  onClick={handleEnd}
                   className="px-6 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition focus:ring-2 focus:ring-red-300"
                 >
-                  End
+                  {currentIndex === mediaList.length - 1 ? "Finish" : "Next"}
                 </button>
               </div>
             </motion.div>
@@ -933,5 +973,4 @@ if (isLoading) {
     </div>
   );
 };
-
 export default ExperienceFlow;

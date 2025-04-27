@@ -156,7 +156,7 @@ def predict_emotion(request):
             # Extract mental health scores from video analysis
             print(result[0], result[2])
             emotion_summary = result[0] 
-            average_confidence_scores = emotion_summary.get("Average Confidence Scores", {})
+            emotion_count_scores = emotion_summary.get("Emotion Counts", {})
 
             video_prediction = result[2]   # JSON data with mental health scores
             
@@ -332,7 +332,7 @@ def predict_emotion(request):
         "anxiety": final_anxiety,
         "stress": final_stress
     },
-    "average_confidence_scores": average_confidence_scores if has_video else {},
+    "emotion_count_scores": emotion_count_scores if has_video else {},
     "message": "Results processed and saved successfully."
 }
 

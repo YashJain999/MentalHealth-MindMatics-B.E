@@ -346,8 +346,21 @@ const SignUp = () => {
         }
     } catch (error) {
       setIsSubmitting(false);
-      console.error('Registration failed', error.response ? error.response.data : error.message);
-      alert('Registration failed. Please try again.');
+      console.error('Registration failed', error.response.data);
+    
+      const errors = error.response?.data;
+      if (errors) {
+        // Check for email errors
+        if (errors.email) {
+          alert(errors.email[0]); // "This email is already taken."
+        } else if (errors.phone_number) {
+          alert(errors.phone_number[0]); // "This phone number is already registered."
+        } else {
+          alert('Registration failed. Please check your input.');
+        }
+      } else {
+        alert('Something went wrong. Please try again later.');
+      }
     }
   };
 

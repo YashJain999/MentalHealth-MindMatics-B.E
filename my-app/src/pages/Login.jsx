@@ -87,6 +87,16 @@ const Login = () => {
       setTimeout(() => {
         formElement.classList.remove('shake-animation');
       }, 500);
+      // Show alert for error
+  if (error.response && error.response.data) {
+    if (error.response.data.detail) {
+      alert("Check your email id and password"); // for typical DRF JWT errors like "No active account found"
+    } else {
+      alert('Login failed. Please check your credentials.');
+    }
+  } else {
+    alert('Something went wrong. Please try again later.');
+  }
     }
   };
 

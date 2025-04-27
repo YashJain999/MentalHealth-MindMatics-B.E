@@ -33,9 +33,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
-# CSRF_TRUSTED_ORIGINS = [
-#     "http://localhost:3000",
-# ]
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+]
 
 # Django REST Framework settings
 REST_FRAMEWORK = {
@@ -97,13 +97,13 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWS_CREDENTIALS = True
 
 # Allow requests from your frontend
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000",  # Your React development server
-# ]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",  # Your React development server
+]
 
 ROOT_URLCONF = 'Mind_Matrics.urls'
 

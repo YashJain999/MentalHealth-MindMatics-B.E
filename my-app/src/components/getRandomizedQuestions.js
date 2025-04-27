@@ -31,23 +31,26 @@ export const getRandomizedQuestions = (media) => {
 
   let selectedQuestions = [];
 
-  // Step 1: Shuffle and select 2 questions from Depression
+  // Step 1: Ensure at least 2 depression questions
+  if (depressionQuestions.length < 2) {
+    throw new Error("Not enough depression questions. At least 2 required.");
+  }
   const shuffledDepression = depressionQuestions.sort(() => Math.random() - 0.5);
-  for (let i = 0; i < 2 && shuffledDepression.length > 0; i++) {
-    selectedQuestions.push(shuffledDepression.pop());
-  }
+  selectedQuestions.push(...shuffledDepression.slice(0, 2));
 
-  // Step 2: Shuffle and select 2 questions from Anxiety
+  // Step 2: Ensure at least 2 anxiety questions
+  if (anxietyQuestions.length < 2) {
+    throw new Error("Not enough anxiety questions. At least 2 required.");
+  }
   const shuffledAnxiety = anxietyQuestions.sort(() => Math.random() - 0.5);
-  for (let i = 0; i < 2 && shuffledAnxiety.length > 0; i++) {
-    selectedQuestions.push(shuffledAnxiety.pop());
-  }
+  selectedQuestions.push(...shuffledAnxiety.slice(0, 2));
 
-  // Step 3: Shuffle and select 2 questions from Stress
-  const shuffledStress = stressQuestions.sort(() => Math.random() - 0.5);
-  for (let i = 0; i < 2 && shuffledStress.length > 0; i++) {
-    selectedQuestions.push(shuffledStress.pop());
+  // Step 3: Ensure at least 2 stress questions
+  if (stressQuestions.length < 2) {
+    throw new Error("Not enough stress questions. At least 2 required.");
   }
+  const shuffledStress = stressQuestions.sort(() => Math.random() - 0.5);
+  selectedQuestions.push(...shuffledStress.slice(0, 2));
 
   return selectedQuestions;
 };
