@@ -16,6 +16,8 @@ import FoldersPage from "./pages/FoldersPage";
 import PersonalizedRecommendation from "./pages/PersonalizedRecommendation";
 import StressReliefRecommendations from "./components/StressReliefRecommendations";
 import DiaryReport from "./components/DiaryReport";
+import DiaryInstructions from './pages/DiaryInstructions';
+
 
 function Logout(){
   localStorage.clear()
@@ -42,6 +44,7 @@ function App() {
         <Route path="/personalizedrecommendation" element={<PersonalizedRecommendation />} />  
         <Route path="/stressreliefRecommendations" element={<StressReliefRecommendations />} /> 
         <Route path="/diary/report/:folderId" element={<DiaryReport />} />
+        <Route path="/diary/instructions" element={<DiaryInstructions />} />
         </Routes>
     </div>
   );

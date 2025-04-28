@@ -128,7 +128,7 @@ const Home = () => {
         {
             title: 'Mindful Moments: Your Personal Diary',
             background: diaryimage,
-            route: '/diary/folders',
+            route: '/diary/instructions',
             icon: '📓',
             description: 'Keep track of your thoughts and emotions day by day.'
         },
